@@ -43,8 +43,6 @@ print("Using language = " + args["language"] + "\n")
 
 
 # Create OCR Tesseract object
-#ocr = cv2.text.OCRTesseract_create('/opt/local/share/tessdata/')
-#pytesseract.tesseract_cmd = r'/opt/local/bin/tesseract'
 pytesseract.tesseract_cmd = args["tesseract"]
 
 

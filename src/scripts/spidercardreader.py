@@ -21,11 +21,11 @@ limitations under the License.
 """
 
 import sys
-
 import argparse
 import cv2
 import pandas as pd
 
+# Adding path to ocr package - this can probably be done smarter
 from pathlib import Path
 print("Adding to syspath: " + str(Path(__file__).parent.parent))
 sys.path.append(str(Path(__file__).parent.parent))
