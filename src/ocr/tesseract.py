@@ -24,13 +24,13 @@ import pandas as pd
 import cv2
 
 
-
 class OCR():
     """This class is a wrapper data structure on the tesseract and pytesseract OCR library.
     """
     
     def __init__(self, tesseract_cmd, language):
-        """        
+        """When creating an object instance of OCR internal data structures are initialized.
+                
         tesseract_cmd - must be set to the path to the tesseract executable
         language - String setting the language to use by tesseract. Multi-languages can be defined as e.g. 'eng+dan' """
         self._tesseract_cmd = tesseract_cmd
@@ -41,7 +41,7 @@ class OCR():
     
     def read_image(self, image):
         """Parses the image and populates the internal data structures of this class.
-        The image must be a numpy array in RGB color channel order."""
+        image - The image must be a numpy array in RGB color channel order."""
         self.image = image
         self.ocr_result = pytesseract.image_to_data(image, lang=self._language, output_type=pytesseract.Output.DATAFRAME)
         
