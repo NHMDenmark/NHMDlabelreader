@@ -31,9 +31,20 @@ pip install -r requirements.txt
 To run the tests using pytest do the following from the same directory as this README file.
 ```sh
 source venv/bin/activate
-pytest src
+pytest tests
 ```
 Check the output for any failures.
+
+### Packaging
+To create wheel and source packages ready for distribution do:
+```sh
+source venv/bin/activate
+pip install --upgrade -r build_requirements.txt
+python -m build
+```
+This creates a dist directory with the two package files.
+
+To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 
 ## Kims notes
 POStagger, Named Entity, Language detector, and a lot of other stuff - Polyglot:
