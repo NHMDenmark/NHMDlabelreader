@@ -1,9 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-
 Created on Thu May 26 17:44:00 2022
 
 @author: Kim Steenstrup Pedersen, NHMD
+
+Copyright 2022 Natural History Museum of Denmark (NHMD)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+
+Unless required by applicable law or agreed to in writing, software 
+distributed under the License is distributed on an "AS IS" BASIS, 
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+See the License for the specific language governing permissions and 
+limitations under the License. 
 """
 
 import sys
@@ -28,8 +42,6 @@ if __name__ == '__main__':
 	    help="file name for and path to input image")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
         help="language that tesseract uses - depends on installed tesseract language packages")
-    #ap.add_argument("-c", "--codeformat", required=False, default='none', choices=['dmtx', 'qr', 'none'],
-    #    help="choose between searching for QR code (qr) or Data Matrix code (dmtx). Default=none - no search.")
     args = vars(ap.parse_args())
 
     print("Using language = " + args["language"] + "\n")

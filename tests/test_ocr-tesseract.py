@@ -1,8 +1,13 @@
 import pytest
-from pathlib import Path
-from ocr import tesseract
+import sys
 import pytesseract
 import pandas as pd
+
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.joinpath('src')))
+
+from ocr import tesseract
+
 
 
 TESTDATAPATH = Path(__file__).parent
