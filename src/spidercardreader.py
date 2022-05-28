@@ -32,7 +32,8 @@ import pandas as pd
 from labelreader.ocr import tesseract
 
 
-if __name__ == '__main__':
+def main():
+    """The main function of this script."""
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
     ap.add_argument("-t", "--tesseract", required=True,
@@ -55,3 +56,7 @@ if __name__ == '__main__':
 
     ocrreader.visualize_boxes()
 
+
+
+if __name__ == '__main__':
+    main()

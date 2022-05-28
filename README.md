@@ -42,7 +42,13 @@ source venv/bin/activate
 pip install --upgrade -r build_requirements.txt
 python -m build
 ```
-This creates a dist directory with the two package files.
+This creates a dist directory with the two package files. To install the wheel file into another virtual environment do
+```sh
+python -m venv venv2
+source venv2/bin/activate
+pip install --upgrade pip
+pip install dist/NHMDlabelreader-0.0.1-py3-none-any.whl
+```
 
 To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 
