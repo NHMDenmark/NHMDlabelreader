@@ -29,7 +29,7 @@ import pandas as pd
 #print("Adding to syspath: " + str(Path(__file__).parent.parent))
 #sys.path.append(str(Path(__file__).parent.parent))
 
-from ocr import tesseract
+from labelreader.ocr import tesseract
 
 
 if __name__ == '__main__':

@@ -1,2 +1,2 @@
-setuptools
-build
+setuptools>=62.3.2
+build>=0.8.0
