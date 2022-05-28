@@ -50,7 +50,10 @@ pip install --upgrade pip
 pip install dist/NHMDlabelreader-0.0.1-py3-none-any.whl
 ```
 
+For more instructions on how to configure setup.cfg, see the [setuptools quickstart](https://setuptools.pypa.io/en/latest/userguide/quickstart.html#).
+
 To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
+
 
 ## Kims notes
 POStagger, Named Entity, Language detector, and a lot of other stuff - Polyglot:
