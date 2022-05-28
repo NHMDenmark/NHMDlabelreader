@@ -55,9 +55,5 @@ For more instructions on how to configure setup.cfg, see the [setuptools quickst
 To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 
 
-## Kims notes
-POStagger, Named Entity, Language detector, and a lot of other stuff - Polyglot:
-https://github.com/aboSamoor/polyglot
-
-DanNLP:
-https://github.com/alexandrainst/danlp
+## Documentation
+Additional documentation can be found in [docs](https://github.com/NHMDenmark/NHMDlabelreader/tree/main/docs).
