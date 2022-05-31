@@ -57,6 +57,5 @@ def main():
     ocrreader.visualize_boxes()
 
 
-
 if __name__ == '__main__':
     main()

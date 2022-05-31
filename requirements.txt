@@ -3,4 +3,5 @@ pytesseract>=0.3.9
 pyzbar>=0.1.9
 pylibdmtx>=0.1.10
 pandas>=1.4.2
+scikit-image>=0.19.2
 pytest>=7.1.2
