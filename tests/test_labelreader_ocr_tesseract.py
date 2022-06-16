@@ -1,3 +1,4 @@
+"""Copyright NHMD"""
 import pytest
 import sys
 import pytesseract

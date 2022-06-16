@@ -29,13 +29,13 @@ import pylibdmtx.pylibdmtx as dmtx
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument("-t", "--tesseract", required=True,
-    help="path to tesseract executable")
+                help="path to tesseract executable")
 ap.add_argument("-i", "--image", required=True,
-	help="file name for and path to input image")
+                help="file name for and path to input image")
 ap.add_argument("-l", "--language", required=False, default="eng",
-    help="language that tesseract uses - depends on installed tesseract language packages")
+                help="language that tesseract uses - depends on installed tesseract language packages")
 ap.add_argument("-c", "--codeformat", required=False, default='none', choices=['dmtx', 'qr', 'none'],
-    help="choose between searching for QR code (qr) or Data Matrix code (dmtx). Default=none - no search.")
+                help="choose between searching for QR code (qr) or Data Matrix code (dmtx). Default=none - no search.")
 args = vars(ap.parse_args())
 
 print("Using language = " + args["language"] + "\n")
@@ -55,7 +55,7 @@ if args["codeformat"] == 'qr':
     # Inspired by https://www.pyimagesearch.com/2018/05/21/an-opencv-barcode-and-qr-code-scanner-with-zbar/
     # pyzbar is developed by NHM London, https://github.com/NaturalHistoryMuseum/pyzbar
 
-    height,width = img_gray.shape[:2]
+    height, width = img_gray.shape[:2]
     qrcodes = pyzbar.decode((img_gray.tobytes(), width, height), symbols=[ZBarSymbol.QRCODE])
 
     print("QR codes:\n")
@@ -63,7 +63,7 @@ if args["codeformat"] == 'qr':
 
 elif args["codeformat"] == 'dmtx':
     # Find Data Matrix codes in the image and decode
-    # https://github.com/NaturalHistoryMuseum/pylibdmtx/ as maintained by NHM London, https://github.com/NaturalHistoryMuseum/pylibdmtx/
+    # https://github.com/NaturalHistoryMuseum/pylibdmtx/ as maintained by NHM London
     # REALLY SLOW - must detect code area and do a cropping of the image before calling decode
     dmcodes = dmtx.decode(img_rgb)
 
@@ -76,7 +76,5 @@ elif args["codeformat"] == 'dmtx':
 print("\n OCR read text:\n")
 print(pytesseract.image_to_string(img_rgb, lang=args["language"]))
 
-#ocr_result = pytesseract.image_to_data(img_rgb, lang=args["language"])
-#ocr_boxes = pytesseract.image_to_boxes(img_rgb, lang=args["language"])
-
-
+# ocr_result = pytesseract.image_to_data(img_rgb, lang=args["language"])
+# ocr_boxes = pytesseract.image_to_boxes(img_rgb, lang=args["language"])

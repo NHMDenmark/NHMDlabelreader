@@ -71,7 +71,8 @@ def find_labels(mask):
        Returns:
          A list of detected label oriented bounding boxes as 8-tuples containing the four 
          corner coordinates.
-    """    
+    """
+    # TODO
     pass
     
     
