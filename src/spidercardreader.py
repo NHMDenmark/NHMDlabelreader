@@ -19,7 +19,7 @@ See the License for the specific language governing permissions and
 limitations under the License. 
 """
 
-import sys
+# import sys
 import argparse
 import cv2
 import pandas as pd
@@ -37,11 +37,11 @@ def main():
     # construct the argument parser and parse the arguments
     ap = argparse.ArgumentParser()
     ap.add_argument("-t", "--tesseract", required=True,
-        help="path to tesseract executable")
+                    help="path to tesseract executable")
     ap.add_argument("-i", "--image", required=True,
-	    help="file name for and path to input image")
+                    help="file name for and path to input image")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
-        help="language that tesseract uses - depends on installed tesseract language packages")
+                    help="language that tesseract uses - depends on installed tesseract language packages")
     args = vars(ap.parse_args())
 
     print("Using language = " + args["language"] + "\n")
