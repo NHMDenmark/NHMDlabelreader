@@ -24,7 +24,7 @@ from skimage.morphology import binary_dilation, binary_erosion, binary_closing, 
 from skimage.measure import label
 
 
-def color_segment_labels(img, hueRange=(0.0, 0.1)):
+def color_segment_labels(img, huerange=(0.0, 0.1)):
     """Perform a simple color-based foreground-background segmentation to find all labels in an image.
        The segmentation is perfomed by converting the image to HSV color space representation and then 
        perform a range threshold on the hue channel. Remember that hue is periodic (in the range [0, 1]) 
@@ -32,19 +32,19 @@ def color_segment_labels(img, hueRange=(0.0, 0.1)):
     
        Parameters:
          img: image to be segmented as a ndarray (N,M,C) in either grayscale (C=1) or RGB (C=3) format.
-         hueRange: a 2-tuple indicating the range of hue values corresponding to background. 
+         huerange: a 2-tuple indicating the range of hue values corresponding to background. 
     
        Returns:
          binary segmentation mask as a ndarray (N,M). 
     """
-    imgHSV = rgb2hsv(img)
+    img_hsv = rgb2hsv(img)
         
     # TODO: Maybe check the value channel is large enough to avoid black noise.
-    low = imgHSV[:,:,0] >= hueRange[0]
-    high = imgHSV[:,:,0] <= hueRange[1]
+    low = img_hsv[:, :, 0] >= huerange[0]
+    high = img_hsv[:, :, 0] <= huerange[1]
     
-    mask=np.ones(img.shape[0:2], dtype=np.uint8)
-    mask[np.logical_and(low, high)] = 0 # Set all background pixels to zero
+    mask = np.ones(img.shape[0:2], dtype=np.uint8)
+    mask[np.logical_and(low, high)] = 0  # Set all background pixels to zero
     
     return mask
     
@@ -54,13 +54,13 @@ def improve_binary_mask(mask, radius=10):
     
        Parameters:
          mask: Binary ndarray (N,M) containing the mask
-         radius: Radius (in pixels) of the disk structuring element used for processing
+         radius: Radius (in integer pixels) of the disk structuring element used for processing
        Returns:
          Binary ndarray (N,M) containing the processed mask
     """
     selem = disk(radius)
-    newMask = closing(mask, footprint=selem)
-    return newMask
+    new_mask = closing(mask, footprint=selem)
+    return new_mask
 
 
 def find_labels(mask):
