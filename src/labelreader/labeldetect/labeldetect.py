@@ -19,13 +19,11 @@ See the License for the specific language governing permissions and
 limitations under the License. 
 """
 import numpy as np
+import math
 from skimage.color import rgb2hsv
 from skimage.morphology import disk, closing
-import skimage.measure # Needed for label function
-from skimage.segmentation import find_boundaries
-from skimage.transform import hough_line, hough_line_peaks
-from skimage.feature import corner_fast, corner_peaks
-
+import skimage.measure  # Needed for label function and regionprop
+from skimage.transform import EuclideanTransform, warp
 
 def color_segment_labels(img, huerange=(0.0, 0.1)):
     """Perform a simple color-based foreground-background segmentation to find all labels in an image.
@@ -89,6 +87,7 @@ def find_labels(mask):
     
 def resample_label(img, label_img, num_labels):
     """Crop and rotate the label image to be axis aligned by resampling the label pixels.
+        We assume that labels in images are rectangular, but can be oriented in anyway in the image.
     
        Parameters:
          img: Image to process as an ndarray in either grayscale or RGB format.
@@ -100,27 +99,47 @@ def resample_label(img, label_img, num_labels):
     """
 
     lst_resampled_labels = []
+
+    props = skimage.measure.regionprops(label_img)
+
     # Loop through all labels ignoring the background segment
-    for label in range(1,num_labels+1):
-        tmp_label_img = np.zeros_like(label_img)
-        bidx = label_img==label
-        tmp_label_img[bidx] = label_img[bidx]
+    for prop in props:
+        label_id = prop.label
+        orientation = prop.orientation
+        centroid = prop.centroid
+        axis_minor_length = prop.axis_minor_length
+        axis_major_length = prop.axis_major_length
+        bbox = prop.bbox
 
-        # TODO: Not done - this is slow, consider using a corner detector
-        # corner_fast does not work, maybe because I need to convert the image to float representation
-        boundaries = find_boundaries(tmp_label_img, mode='outer', background=0)
-        boundaries_mask = np.asarray(boundaries, dtype=np.uint8)
-        h, theta, d = hough_line(boundaries_mask)
 
-    # TODO: This is temporary notes code
-    boundaries = find_boundaries(label_img, mode='outer', background=0)
-    boundaries_mask = np.asarray(boundaries, dtype=np.uint8)
-    h, theta, d = hough_line(boundaries_mask)
-    for _, angle, dist in zip(*hough_line_peaks(h, theta, d, threshold=np.max(h) * 0.15)):
-        (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
-        #axes.axline((x0, y0), slope=np.tan(angle + np.pi / 2))
-    
-    # skimage.transform.rotate or even better skimage.transform.estimate_transform
-    
+        # TODO: Use minor/major axis length to check if aspect ratio of region is reasonable
+        #  otherwise discard
+
+        # Find upper left corner of rotated bounding box
+        e_min = np.array((math.cos(orientation), -math.sin(orientation))) * 0.5 * axis_minor_length
+        e_max = np.array((-math.sin(orientation), -math.cos(orientation))) * 0.5 * axis_major_length
+        corner = centroid - e_min - e_max
+
+        # Construct inverse homogeneous Euclidean transformation matrix to transform
+        # label in img into a cropped and axis aligned image of this label
+        inv_transf = EuclideanTransform(rotation=-orientation, translation=corner)
+
+        # Crop and rotate image
+        # TODO: Consider rounding output_shape instead of truncating to integer
+        warped = warp(img, inv_transf, output_shape=(int(axis_minor_length), int(axis_major_length)))
+
+        # Add region properties to a dictionary together with image of label
+        label_data = dict()  # Create a new empty dictionary object
+        label_data['label_id'] = label_id
+        label_data['orientation'] = orientation
+        label_data['centroid'] = centroid
+        label_data['axis_minor_length'] = axis_minor_length
+        label_data['axis_major_length'] = axis_major_length
+        label_data['bbox'] = bbox
+        label_data['image'] = warped
+
+        # Append cropped image of label to lst_resampled_labels.
+        lst_resampled_labels.append(label_data)
+
     return lst_resampled_labels
     
