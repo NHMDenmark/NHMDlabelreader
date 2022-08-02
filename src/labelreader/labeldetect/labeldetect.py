@@ -20,8 +20,11 @@ limitations under the License.
 """
 import numpy as np
 from skimage.color import rgb2hsv
-from skimage.morphology import binary_dilation, binary_erosion, binary_closing, disk, closing
-from skimage.measure import label
+from skimage.morphology import disk, closing
+import skimage.measure # Needed for label function
+from skimage.segmentation import find_boundaries
+from skimage.transform import hough_lines, hough_line_peaks
+from skimage.feature import corner_fast, corner_peaks
 
 
 def color_segment_labels(img, huerange=(0.0, 0.1)):
@@ -39,7 +42,7 @@ def color_segment_labels(img, huerange=(0.0, 0.1)):
     """
     img_hsv = rgb2hsv(img)
         
-    # TODO: Maybe check the value channel is large enough to avoid black noise.
+    # TODO: Maybe check the value channel is large enough to avoid noise from black areas.
     low = img_hsv[:, :, 0] >= huerange[0]
     high = img_hsv[:, :, 0] <= huerange[1]
     
@@ -49,15 +52,23 @@ def color_segment_labels(img, huerange=(0.0, 0.1)):
     return mask
     
     
-def improve_binary_mask(mask, radius=10):
+def improve_binary_mask(mask, radius=10, border_margin = 50):
     """Close holes in a binary mask by applying mathematical morphology.
     
        Parameters:
-         mask: Binary ndarray (N,M) containing the mask
-         radius: Radius (in integer pixels) of the disk structuring element used for processing
+         mask: Binary ndarray (N,M) containing the mask.
+         radius: Radius (in integer pixels) of the disk structuring element used for processing.
+         border_margin: Border margin in pixels to set to zero (i.e. discard from the mask).
        Returns:
          Binary ndarray (N,M) containing the processed mask
     """
+
+    # Remove any pixels at the border
+    mask[0:border_margin, :] = 0
+    mask[-border_margin:, :] = 0
+    mask[:, 0:border_margin] = 0
+    mask[:, -border_margin:] = 0
+
     selem = disk(radius)
     new_mask = closing(mask, footprint=selem)
     return new_mask
@@ -69,26 +80,46 @@ def find_labels(mask):
        Parameters:
          mask: Binary ndarray (N,M) containing the mask
        Returns:
-         A list of detected label oriented bounding boxes as 8-tuples containing the four 
-         corner coordinates.
+         (label_img, num_labels): Returns a tuple containing labelled image and number of unique labels.
     """
-    # TODO
-    pass
+    label_img, num_labels = skimage.measure.label(mask, background=0, return_num=True)
+    return label_img, num_labels
+
     
-    
-def resample_label(img, bbox):
+def resample_label(img, label_img, num_labels):
     """Crop and rotate the label image to be axis aligned by resampling the label pixels.
     
        Parameters:
-         img - image as a ndarray in either grayscale or RGB format.
-         bbox - Bounding box of label to be resampled.
+         img: Image to process as a ndarray in either grayscale or RGB format.
+         label_img: Connected compomnents image with unique label identifier as ndarray
+                    with dtype=np.int64.
+         num_labels: Number of distinct labels found in label_img
        Returns:
-         a numpy array with same number of channels as img which contain the resampled label.
+         a list of numpy arrays with same number of channels as img which contain the resampled labels.
     """
+
+    lst_resampled_labels = []
+    # Loop through all labels ignoring the background segment
+    for label in range(1:num_labels+1):
+        tmp_label_img = np.zeros_like(label_img)
+        bidx = label_img==label
+        tmp_label_img[bidx] = label_img[bidx]
+
+        # TODO: Not done - this is slow, consider using a corner detector
+        # corner_fast does not work, maybe because I need to convert the image to float representation
+        boundaries = find_boundaries(tmp_label_img, mode='outer', background=0)
+        boundaries_mask = =np.asarray(boundaries, dtype=np.uint8)
+        h, theta, d = hough_lines(boundaries_mask)
+
+    # TODO: This is temporary notes code
+    boundaries = find_boundaries(label_img, mode='outer', background=0)
+    boundaries_mask = =np.asarray(boundaries, dtype=np.uint8)
+    h, theta, d = hough_lines(boundaries_mask)
+    for _, angle, dist in zip(*hough_line_peaks(h, theta, d, threshold=np.max(h) * 0.15)):
+        (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+        axes.axline((x0, y0), slope=np.tan(angle + np.pi / 2))
     
-    # TODO
+    # skimage.transform.rotate or even better skimage.transform.estimate_transform
     
-    # skimage.transform.rotate
-    
-    pass
+    return lst_resampled_labels
     

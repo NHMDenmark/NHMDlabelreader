@@ -18,7 +18,7 @@ def test_color_segment_labels():
     
     # Check that the returned image is of the same shape
     assert img.shape[0:2] == segMask.shape
-    assert isinstance(segMask.dtype, np.uint8) 
+    assert segMask.dtype == np.uint8
     
 
 def test_improve_binary_mask():
