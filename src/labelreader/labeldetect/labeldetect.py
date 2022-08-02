@@ -23,7 +23,7 @@ from skimage.color import rgb2hsv
 from skimage.morphology import disk, closing
 import skimage.measure # Needed for label function
 from skimage.segmentation import find_boundaries
-from skimage.transform import hough_lines, hough_line_peaks
+from skimage.transform import hough_line, hough_line_peaks
 from skimage.feature import corner_fast, corner_peaks
 
 
@@ -75,7 +75,8 @@ def improve_binary_mask(mask, radius=10, border_margin = 50):
 
 
 def find_labels(mask):
-    """Find all distinct labels from a binary segmentation mask.
+    """Find all distinct labels from a binary segmentation mask and label pixels belonging to
+       each distinct label with a unique label number.
        
        Parameters:
          mask: Binary ndarray (N,M) containing the mask
@@ -90,8 +91,8 @@ def resample_label(img, label_img, num_labels):
     """Crop and rotate the label image to be axis aligned by resampling the label pixels.
     
        Parameters:
-         img: Image to process as a ndarray in either grayscale or RGB format.
-         label_img: Connected compomnents image with unique label identifier as ndarray
+         img: Image to process as an ndarray in either grayscale or RGB format.
+         label_img: Labelled connected compomnents image with unique label identifier as ndarray
                     with dtype=np.int64.
          num_labels: Number of distinct labels found in label_img
        Returns:
@@ -100,7 +101,7 @@ def resample_label(img, label_img, num_labels):
 
     lst_resampled_labels = []
     # Loop through all labels ignoring the background segment
-    for label in range(1:num_labels+1):
+    for label in range(1,num_labels+1):
         tmp_label_img = np.zeros_like(label_img)
         bidx = label_img==label
         tmp_label_img[bidx] = label_img[bidx]
@@ -108,16 +109,16 @@ def resample_label(img, label_img, num_labels):
         # TODO: Not done - this is slow, consider using a corner detector
         # corner_fast does not work, maybe because I need to convert the image to float representation
         boundaries = find_boundaries(tmp_label_img, mode='outer', background=0)
-        boundaries_mask = =np.asarray(boundaries, dtype=np.uint8)
-        h, theta, d = hough_lines(boundaries_mask)
+        boundaries_mask = np.asarray(boundaries, dtype=np.uint8)
+        h, theta, d = hough_line(boundaries_mask)
 
     # TODO: This is temporary notes code
     boundaries = find_boundaries(label_img, mode='outer', background=0)
-    boundaries_mask = =np.asarray(boundaries, dtype=np.uint8)
-    h, theta, d = hough_lines(boundaries_mask)
+    boundaries_mask = np.asarray(boundaries, dtype=np.uint8)
+    h, theta, d = hough_line(boundaries_mask)
     for _, angle, dist in zip(*hough_line_peaks(h, theta, d, threshold=np.max(h) * 0.15)):
         (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
-        axes.axline((x0, y0), slope=np.tan(angle + np.pi / 2))
+        #axes.axline((x0, y0), slope=np.tan(angle + np.pi / 2))
     
     # skimage.transform.rotate or even better skimage.transform.estimate_transform
     

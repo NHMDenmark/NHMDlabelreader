@@ -29,5 +29,6 @@ def test_improve_binary_mask():
     
     # Check that the returned image is of the same shape
     assert segMask.shape == segMask2.shape
-    assert segMask.dtype == segMask2.dtype 
+    assert segMask.dtype == segMask2.dtype
+    # TODO: Add additional tests that the result is as expected (without testing the underlying library functions)
     
