@@ -41,7 +41,8 @@ class OCR():
     
     def read_image(self, image):
         """Parses the image and populates the internal data structures of this class.
-        image - The image must be a numpy array in RGB color channel order."""
+
+        image - Must be either a path to an image file or a numpy array in RGB color channel order."""
         self.image = image
         self.ocr_result = pytesseract.image_to_data(image, lang=self._language, output_type=pytesseract.Output.DATAFRAME)
         
@@ -98,7 +99,10 @@ class OCR():
                 ]
         line_thickness = 3 # pts
 
-        img = cv2.imread(self.image)
+        if isinstance(self.image, str):
+            img = cv2.imread(self.image)
+        else:
+            img = cv2.cvtColor(self.image, cv2.COLOR_RGB2BGR)
         
         if isinstance(self.ocr_result, type(None)):
             print("Warning: You must call read_image prior to calling the get_text method!")

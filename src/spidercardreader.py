@@ -21,7 +21,9 @@ limitations under the License.
 
 # import sys
 import argparse
-# import cv2
+from skimage.io import imread
+from skimage.util import img_as_ubyte
+import matplotlib.pyplot as plt
 import pandas as pd
 
 # Adding path to ocr package - this can probably be done smarter
@@ -30,6 +32,7 @@ import pandas as pd
 # sys.path.append(str(Path(__file__).parent.parent))
 
 from labelreader.ocr import tesseract
+from labelreader.labeldetect import labeldetect
 
 
 def main():
@@ -46,15 +49,39 @@ def main():
 
     print("Using language = " + args["language"] + "\n")
 
+    # Initialize the OCR reader object
     ocrreader = tesseract.OCR(args["tesseract"], args["language"])
 
-    ocrreader.read_image(args["image"])
+    # Read image with filename args["image"]
+    img = imread(args["image"])
 
-    ocrtext = ocrreader.get_text()
-    for i in range(len(ocrtext)):
-        print(ocrtext[i])
+    segMask = labeldetect.color_segment_labels(img)
+    segMask = labeldetect.improve_binary_mask(segMask)
+    label_img, num_labels = labeldetect.find_labels(segMask)
+    lst_resampled_labels = labeldetect.resample_label(img, label_img, num_labels)
 
-    ocrreader.visualize_boxes()
+    plt.figure()
+    plt.imshow(label_img)
+    print("number of labels detected: " + str(num_labels))
+
+    for label_data in lst_resampled_labels:
+        print("")
+        print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
+
+        img_rgb = img_as_ubyte(label_data['image'])
+        ocrreader.read_image(img_rgb)
+
+        ocrtext = ocrreader.get_text()
+        for i in range(len(ocrtext)):
+            print(ocrtext[i])
+
+        #ocrreader.visualize_boxes()
+
+        plt.figure()
+        plt.imshow(label_data['image'])
+        plt.title("ID " + str(label_data["label_id"]))
+
+    plt.show()
 
 
 if __name__ == '__main__':

@@ -115,17 +115,29 @@ def resample_label(img, label_img, num_labels):
         # TODO: Use minor/major axis length to check if aspect ratio of region is reasonable
         #  otherwise discard
 
+        # Convert centroid from (row,col) to (x,y) representation
+        center = -np.array([centroid[1], centroid[0]], dtype=float)
+
         # Find upper left corner of rotated bounding box
-        e_min = np.array((math.cos(orientation), -math.sin(orientation))) * 0.5 * axis_minor_length
-        e_max = np.array((-math.sin(orientation), -math.cos(orientation))) * 0.5 * axis_major_length
-        corner = centroid - e_min - e_max
+        corner = np.array([0.5 * axis_major_length, 0.5 * axis_minor_length], dtype=float)
+        #corner = np.array([0.0, 0.0], dtype=float)
+
 
         # Construct inverse homogeneous Euclidean transformation matrix to transform
         # label in img into a cropped and axis aligned image of this label
-        inv_transf = EuclideanTransform(rotation=-orientation, translation=corner)
+        trans_centroid = np.eye(3, dtype=float)
+        trans_centroid[0, 2] = center[0]
+        trans_centroid[1, 2] = center[1]
+        rotate_crop = EuclideanTransform(rotation=(orientation+np.pi /2.0), translation=corner)
+
+        # Combined transform
+        transf = np.dot(rotate_crop.params, trans_centroid)
+        # The inverse of the combined transform
+        inv_transf = np.linalg.inv(transf)
+
 
         # Crop and rotate image
-        # TODO: Consider rounding output_shape instead of truncating to integer
+        # TODO: Consider rounding output_shape instead of truncating to integer - Does not seem to be important
         warped = warp(img, inv_transf, output_shape=(int(axis_minor_length), int(axis_major_length)))
 
         # Add region properties to a dictionary together with image of label
