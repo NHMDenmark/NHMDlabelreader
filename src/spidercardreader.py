@@ -55,14 +55,22 @@ def main():
     # Read image with filename args["image"]
     img = imread(args["image"])
 
-    segMask = labeldetect.color_segment_labels(img)
+    segMask = labeldetect.color_segment_labels(img) # Red background
+    #segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.6)) # Light blue background
     segMask = labeldetect.improve_binary_mask(segMask)
     label_img, num_labels = labeldetect.find_labels(segMask)
     lst_resampled_labels = labeldetect.resample_label(img, label_img, num_labels)
 
     plt.figure()
+    plt.imshow(img)
+
+    plt.figure()
     plt.imshow(label_img)
     print("number of labels detected: " + str(num_labels))
+    if not num_labels == 9:
+        print("Too many detected labels ... terminating program")
+        #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
+
 
     for label_data in lst_resampled_labels:
         print("")
