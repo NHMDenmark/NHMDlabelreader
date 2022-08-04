@@ -35,6 +35,82 @@ from labelreader.ocr import tesseract
 from labelreader.labeldetect import labeldetect
 
 
+def empty_dataframe():
+    record = pd.DataFrame({
+        "Alt Cat Number": [],
+        "Publish": [],
+        "Count": [],
+        "Other Remarks": [],
+        "Order": [],
+        "Family": [],
+        "Genus1": [],
+        "Species1": [],
+        "Determiner First Name": [],
+        "Determiner Last Name": [],
+        "Determination Remarks": [],
+        "Country": [],
+        "Locality": [],
+        "Start Date": [],
+        "Collector First Name": [],
+        "Collector Last Name": []
+    })
+    return record
+
+def parsetext(ocrtext):
+    """Parses the transcribed text from a paper card into appropriate data fields.
+
+       ocrtext: A list of lists of strings - one for each line on the paper card.
+       Return record: Returns a Pandas data frame with the parsed transcribed data.
+    """
+
+    # Skip any beginning blank lines
+    line_idx = 0
+    for idx in range(0, len(ocrtext)):
+        if not ocrtext[idx][0].isspace():
+            line_idx = idx
+            break
+
+    # Parse first real line
+    alt_cat_number = ""
+    if ocrtext[line_idx][0].isdigit():
+        alt_cat_number = ocrtext[line_idx][0]
+
+    genus = ""
+    if len(ocrtext[line_idx]) > 1:
+        genus = ocrtext[line_idx][1]
+
+    species = ""
+    if len(ocrtext[line_idx]) > 2:
+        species = ocrtext[line_idx][2]
+
+    det_remarks = ""
+    if len(ocrtext[line_idx]) > 3:
+        det_remarks = ''.join(ocrtext[line_idx][3:])
+
+    # TODO: Parse the following lines
+
+    record = pd.DataFrame({
+        "Alt Cat Number": [alt_cat_number],
+        "Publish": [1],
+        "Count": [""],
+        "Other Remarks": [""],
+        "Order": [""],
+        "Family": [""],
+        "Genus1": [genus],
+        "Species1": [species],
+        "Determiner First Name": ["Ole"],
+        "Determiner Last Name": ["Bøggild"],
+        "Determination Remarks": [det_remarks],
+        "Country": [""],
+        "Locality": [""],
+        "Start Date": [""],
+        "Collector First Name": ["Ole"],
+        "Collector Last Name": ["Bøggild"]
+    })
+
+    return record
+
+
 def main():
     """The main function of this script."""
     # construct the argument parser and parse the arguments
@@ -66,12 +142,13 @@ def main():
 
     plt.figure()
     plt.imshow(label_img)
-    print("number of labels detected: " + str(num_labels))
-    if not num_labels == 9:
-        print("Too many detected labels ... terminating program")
+    print("number of labels detected: " + str(len(lst_resampled_labels)))
+    if not len(lst_resampled_labels) == 9:
+        print("Warning: Too many detected labels ... terminating program")
         #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
 
 
+    master_table = empty_dataframe()
     for label_data in lst_resampled_labels:
         print("")
         print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
@@ -83,6 +160,11 @@ def main():
         for i in range(len(ocrtext)):
             print(ocrtext[i])
 
+        df = parsetext(ocrtext)
+
+        # Add to master table
+        master_table = pd.concat([master_table, df], axis=0)
+
         #ocrreader.visualize_boxes()
 
         plt.figure()
@@ -90,6 +172,8 @@ def main():
         plt.title("ID " + str(label_data["label_id"]))
 
     plt.show()
+
+    master_table.to_excel("../tests/test.xlsx", index=False)
 
 
 if __name__ == '__main__':
