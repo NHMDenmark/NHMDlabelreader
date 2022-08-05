@@ -257,14 +257,15 @@ def main():
 
         df = parsefronttext(ocrtext)
 
-        # Add to master table
-        master_table = pd.concat([master_table, df], axis=0)
 
         # TODO: Write cropped image to output directory
         #  In case of no Alt Cat Number just pick a unique random file name
-        outfilename = "test.png"
+        outfilename = df["Alt Cat Number"][0] + ".png"
         imsave(PurePath(args["output"], outfilename).as_posix(), img_rgb)
+        df["Attachment"][0] = outfilename  # Add filename to data record
 
+        # Add to master table
+        master_table = pd.concat([master_table, df], axis=0)
 
         #ocrreader.visualize_boxes()
 
