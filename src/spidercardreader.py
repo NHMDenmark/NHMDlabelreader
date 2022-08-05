@@ -25,6 +25,7 @@ from skimage.io import imread
 from skimage.util import img_as_ubyte
 import matplotlib.pyplot as plt
 import pandas as pd
+import re
 
 # Adding path to ocr package - this can probably be done smarter
 # from pathlib import Path
@@ -37,6 +38,7 @@ from labelreader.labeldetect import labeldetect
 
 def empty_dataframe():
     record = pd.DataFrame({
+        "Catalogue Number": [],
         "Alt Cat Number": [],
         "Publish": [],
         "Count": [],
@@ -52,11 +54,54 @@ def empty_dataframe():
         "Locality": [],
         "Start Date": [],
         "Collector First Name": [],
-        "Collector Last Name": []
+        "Collector Last Name": [],
+        "Attachment": []
     })
     return record
 
-def parsetext(ocrtext):
+
+def isdate(text):
+    """Return true if text has the date format used by Bøggild.
+       Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
+    # Include a common OCR mistake of reading I as 1 as acceptable.
+    if re.match('\d{1,2}.[IVX1]+.\d{4}', text):
+        return True
+    else:
+        return False
+
+def islocality(text):
+    """Return true if text has the locality format used by Bøggild.
+       Assume the locality text starts with 'D,'
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('D,(\w|\s|[.,])+', text):
+        return True
+    else:
+        return False
+
+
+def isauthor(text):
+    """Return true if text is a taxonomic author.
+       Assumes that author is inclosed in parentheses.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('\((\d|\w|\s|[.,)])*', text):
+        return True
+    else:
+        return False
+
+
+
+def parsefronttext(ocrtext):
     """Parses the transcribed text from a paper card into appropriate data fields.
 
        ocrtext: A list of lists of strings - one for each line on the paper card.
@@ -71,41 +116,75 @@ def parsetext(ocrtext):
             break
 
     # Parse first real line
+    word_idx = 0
     alt_cat_number = ""
-    if ocrtext[line_idx][0].isdigit():
-        alt_cat_number = ocrtext[line_idx][0]
+    if ocrtext[line_idx][word_idx].isdigit():
+        alt_cat_number = ocrtext[line_idx][word_idx]
+        word_idx += 1
 
     genus = ""
     if len(ocrtext[line_idx]) > 1:
-        genus = ocrtext[line_idx][1]
+        genus = ocrtext[line_idx][word_idx]
+        word_idx += 1
 
     species = ""
     if len(ocrtext[line_idx]) > 2:
-        species = ocrtext[line_idx][2]
+        species = ocrtext[line_idx][word_idx]
+        word_idx += 1
 
     det_remarks = ""
-    if len(ocrtext[line_idx]) > 3:
-        det_remarks = ''.join(ocrtext[line_idx][3:])
+    if len(ocrtext[line_idx]) > word_idx:
+        # Handle the case with species names containing more than one word
+        for idx in range(word_idx, len(ocrtext[line_idx])):
+            if isauthor(ocrtext[line_idx][idx]):
+                det_remarks = ' '.join(ocrtext[line_idx][idx:])
+                break
+            else:
+                species += " " + ocrtext[line_idx][idx]
 
-    # TODO: Parse the following lines
+    line_idx += 1 # Next line
+
+    # Initialize variables
+    datetext = ""
+    country = "Denmark"
+    locality = ""
+    other = ""
+
+    # Parse the remaining lines
+    for idx in range(line_idx, len(ocrtext)):
+        joined_line = ' '.join(ocrtext[idx])
+        if isdate(joined_line):
+            datetext = joined_line
+        elif islocality(joined_line):
+            # Pass out country
+            locality = ' '.join(ocrtext[idx][1:])
+        elif joined_line.isspace():
+            continue  # Skip empty lines
+        else:
+            # Add the remaining text to the Other Remarks field
+            if len(other) > 0:
+                other += "\n"
+            other += joined_line
 
     record = pd.DataFrame({
+        "Catalogue Number": [""],
         "Alt Cat Number": [alt_cat_number],
         "Publish": [1],
         "Count": [""],
-        "Other Remarks": [""],
-        "Order": [""],
+        "Other Remarks": [other],
+        "Order": ["Araneae"],
         "Family": [""],
         "Genus1": [genus],
         "Species1": [species],
         "Determiner First Name": ["Ole"],
         "Determiner Last Name": ["Bøggild"],
         "Determination Remarks": [det_remarks],
-        "Country": [""],
-        "Locality": [""],
-        "Start Date": [""],
+        "Country": [country],
+        "Locality": [locality],
+        "Start Date": [datetext],
         "Collector First Name": ["Ole"],
-        "Collector Last Name": ["Bøggild"]
+        "Collector Last Name": ["Bøggild"],
+        "Attachment": [""]
     })
 
     return record
@@ -114,14 +193,20 @@ def parsetext(ocrtext):
 def main():
     """The main function of this script."""
     # construct the argument parser and parse the arguments
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(description="Transcribe Bøggild catalogue cards from images.")
     ap.add_argument("-t", "--tesseract", required=True,
                     help="path to tesseract executable")
     ap.add_argument("-i", "--image", required=True,
                     help="file name for and path to input image")
+    ap.add_argument("-o", "--output", required=False, default="../output/test.xlsx",
+                    help="path and filename for Excel spreadsheet to write result to.")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
                     help="language that tesseract uses - depends on installed tesseract language packages")
+    ap.add_argument("-v", "--verbose", required=False, action='store_true', default=False,
+                    help="If set the program is verbose and will print out debug information")
+
     args = vars(ap.parse_args())
+
 
     print("Using language = " + args["language"] + "\n")
 
@@ -144,7 +229,7 @@ def main():
     plt.imshow(label_img)
     print("number of labels detected: " + str(len(lst_resampled_labels)))
     if not len(lst_resampled_labels) == 9:
-        print("Warning: Too many detected labels ... terminating program")
+        print("Warning: Too many detected labels ...")
         #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
 
 
@@ -157,23 +242,32 @@ def main():
         ocrreader.read_image(img_rgb)
 
         ocrtext = ocrreader.get_text()
-        for i in range(len(ocrtext)):
-            print(ocrtext[i])
 
-        df = parsetext(ocrtext)
+        if args["verbose"]:
+            for i in range(len(ocrtext)):
+                print(ocrtext[i])
+
+        df = parsefronttext(ocrtext)
 
         # Add to master table
         master_table = pd.concat([master_table, df], axis=0)
 
+        # TODO: Write cropped image to output directory
+        #  In case of no Alt Cat Number just pick a unique random file name
+        
+
         #ocrreader.visualize_boxes()
 
-        plt.figure()
-        plt.imshow(label_data['image'])
-        plt.title("ID " + str(label_data["label_id"]))
+        if args["verbose"]:
+            plt.figure()
+            plt.imshow(label_data['image'])
+            plt.title("ID " + str(label_data["label_id"]))
 
-    plt.show()
+    if args["verbose"]:
+        plt.show()
 
-    master_table.to_excel("../tests/test.xlsx", index=False)
+    # Write Excel sheet to disk
+    master_table.to_excel(args["output"], index=False)
 
 
 if __name__ == '__main__':
