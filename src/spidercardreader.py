@@ -21,11 +21,12 @@ limitations under the License.
 
 # import sys
 import argparse
-from skimage.io import imread
+from skimage.io import imread, imsave
 from skimage.util import img_as_ubyte
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
+from pathlib import PurePath
 
 # Adding path to ocr package - this can probably be done smarter
 # from pathlib import Path
@@ -198,7 +199,7 @@ def main():
                     help="path to tesseract executable")
     ap.add_argument("-i", "--image", required=True,
                     help="file name for and path to input image")
-    ap.add_argument("-o", "--output", required=False, default="../output/test.xlsx",
+    ap.add_argument("-o", "--output", required=False, default="../output",
                     help="path and filename for Excel spreadsheet to write result to.")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
                     help="language that tesseract uses - depends on installed tesseract language packages")
@@ -213,7 +214,10 @@ def main():
     # Initialize the OCR reader object
     ocrreader = tesseract.OCR(args["tesseract"], args["language"])
 
+    # TODO: Loop over a directory of images and handle front (red) and back (blue)
+
     # Read image with filename args["image"]
+    print("Transcribing " + args["image"])
     img = imread(args["image"])
 
     segMask = labeldetect.color_segment_labels(img) # Red background
@@ -222,12 +226,15 @@ def main():
     label_img, num_labels = labeldetect.find_labels(segMask)
     lst_resampled_labels = labeldetect.resample_label(img, label_img, num_labels)
 
-    plt.figure()
-    plt.imshow(img)
+    if args["verbose"]:
+        plt.figure()
+        plt.imshow(img)
 
-    plt.figure()
-    plt.imshow(label_img)
-    print("number of labels detected: " + str(len(lst_resampled_labels)))
+        plt.figure()
+        plt.imshow(label_img)
+
+        print("number of labels detected: " + str(len(lst_resampled_labels)))
+
     if not len(lst_resampled_labels) == 9:
         print("Warning: Too many detected labels ...")
         #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
@@ -235,8 +242,9 @@ def main():
 
     master_table = empty_dataframe()
     for label_data in lst_resampled_labels:
-        print("")
-        print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
+        if args["verbose"]:
+            print("")
+            print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
 
         img_rgb = img_as_ubyte(label_data['image'])
         ocrreader.read_image(img_rgb)
@@ -254,7 +262,9 @@ def main():
 
         # TODO: Write cropped image to output directory
         #  In case of no Alt Cat Number just pick a unique random file name
-        
+        outfilename = "test.png"
+        imsave(PurePath(args["output"], outfilename).as_posix(), img_rgb)
+
 
         #ocrreader.visualize_boxes()
 
@@ -267,7 +277,7 @@ def main():
         plt.show()
 
     # Write Excel sheet to disk
-    master_table.to_excel(args["output"], index=False)
+    master_table.to_excel(PurePath(args["output"], "test.xlsx").as_posix(), index=False)
 
 
 if __name__ == '__main__':
