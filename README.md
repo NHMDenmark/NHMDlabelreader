@@ -11,6 +11,7 @@ tesseract-dan
 tesseract-eng
 zbar
 libdmtx
+ImageMagick
 ```
 
 Create virtual environment

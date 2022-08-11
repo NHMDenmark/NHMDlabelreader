@@ -28,14 +28,17 @@ class OCR():
     """This class is a wrapper data structure on the tesseract and pytesseract OCR library.
     """
     
-    def __init__(self, tesseract_cmd, language):
+    def __init__(self, tesseract_cmd, language, config=''):
         """When creating an object instance of OCR internal data structures are initialized.
                 
-        tesseract_cmd - must be set to the path to the tesseract executable
-        language - String setting the language to use by tesseract. Multi-languages can be defined as e.g. 'eng+dan' """
+        tesseract_cmd: Must be set to the path to the tesseract executable
+        language: String setting the language to use by tesseract. Multi-languages can be defined as e.g. 'eng+dan'
+        config: A string with extra options for tesseract - see PyTesseract documentatiton for possibilities.
+        """
         self._tesseract_cmd = tesseract_cmd
         pytesseract.tesseract_cmd = self._tesseract_cmd
         self._language = language
+        self._config = config
         self.ocr_result = None
     
     
@@ -44,7 +47,7 @@ class OCR():
 
         image - Must be either a path to an image file or a numpy array in RGB color channel order."""
         self.image = image
-        self.ocr_result = pytesseract.image_to_data(image, lang=self._language, output_type=pytesseract.Output.DATAFRAME)
+        self.ocr_result = pytesseract.image_to_data(image, lang=self._language, output_type=pytesseract.Output.DATAFRAME, config=self._config)
         
         
     def get_text(self):
