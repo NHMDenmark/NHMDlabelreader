@@ -263,7 +263,6 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
 
     df = parsetext(ocrtext)
 
-    # TODO: Write cropped image to output directory
     #  In case of no Alt Cat Number just pick a unique random file name
     if df["Alt Cat Number"][0] == "":
         outfilename = Path(imgfilename).stem + "_image" + str(no_img) + "_page" + str(no_pages) + ".tif"
@@ -314,9 +313,9 @@ def main():
         # Check if it is a pdf file
         if Path(imgfilename).suffix == '.pdf':
             print("Reading pages in a pdf file")
-            # TODO: This assumes that the scan is in 600 ppi and only the last page is read in the pdf file
             with Image(filename=imgfilename, resolution=args["resolution"]) as img_wand_all:
                 no_pages = 0
+                # Read all pages
                 for img_wand in img_wand_all.sequence:
                     img = np.array(img_wand)
                     no_pages += 1
