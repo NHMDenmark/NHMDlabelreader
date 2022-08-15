@@ -26,7 +26,7 @@ from skimage.util import img_as_ubyte
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
-from pathlib import PurePath
+from pathlib import Path
 
 # Adding path to ocr package - this can probably be done smarter
 # from pathlib import Path
@@ -35,6 +35,7 @@ from pathlib import PurePath
 
 from labelreader.ocr import tesseract
 from labelreader.labeldetect import labeldetect
+from util.util import checkfilepath
 
 
 def empty_dataframe():
@@ -197,12 +198,14 @@ def main():
     ap = argparse.ArgumentParser(description="Transcribe Bøggild catalogue cards from images.")
     ap.add_argument("-t", "--tesseract", required=True,
                     help="path to tesseract executable")
-    ap.add_argument("-i", "--image", required=True,
+    ap.add_argument("-i", "--image", required=True, action="extend", nargs="+", type=str,
                     help="file name for and path to input image")
     ap.add_argument("-o", "--output", required=False, default="../output",
                     help="path and filename for Excel spreadsheet to write result to.")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
                     help="language that tesseract uses - depends on installed tesseract language packages")
+    ap.add_argument("-r", "--resolution", required=False, default=400, type=int,
+                    help="Set resolution in DPI of scanned images - used for rendering pdf pages so only relevant for PDF files")
     ap.add_argument("-v", "--verbose", required=False, action='store_true', default=False,
                     help="If set the program is verbose and will print out debug information")
 
@@ -214,71 +217,81 @@ def main():
     # Initialize the OCR reader object
     ocrreader = tesseract.OCR(args["tesseract"], args["language"])
 
-    # TODO: Loop over a directory of images and handle front (red) and back (blue)
-
-    # Read image with filename args["image"]
-    print("Transcribing " + args["image"])
-    img = imread(args["image"])
-
-    segMask = labeldetect.color_segment_labels(img) # Red background
-    #segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.6)) # Light blue background
-    segMask = labeldetect.improve_binary_mask(segMask)
-    label_img, num_labels = labeldetect.find_labels(segMask)
-    lst_resampled_labels = labeldetect.resample_label(img, label_img, num_labels)
-
-    if args["verbose"]:
-        plt.figure()
-        plt.imshow(img)
-
-        plt.figure()
-        plt.imshow(label_img)
-
-        print("number of labels detected: " + str(len(lst_resampled_labels)))
-
-    if not len(lst_resampled_labels) == 9:
-        print("Warning: Too many detected labels ...")
-        #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
-
-
     master_table = empty_dataframe()
-    for label_data in lst_resampled_labels:
-        if args["verbose"]:
-            print("")
-            print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
 
-        img_rgb = img_as_ubyte(label_data['image'])
-        ocrreader.read_image(img_rgb)
+    # Loop over a directory of images
+    for imgfilename in args["image"]:
+        # Read image with filename
+        print("Transcribing " + imgfilename)
+        img = imread(imgfilename)
 
-        ocrtext = ocrreader.get_text()
-
-        if args["verbose"]:
-            for i in range(len(ocrtext)):
-                print(ocrtext[i])
-
-        df = parsefronttext(ocrtext)
-
-
-        # TODO: Write cropped image to output directory
-        #  In case of no Alt Cat Number just pick a unique random file name
-        outfilename = df["Alt Cat Number"][0] + ".png"
-        imsave(PurePath(args["output"], outfilename).as_posix(), img_rgb)
-        df["Attachment"][0] = outfilename  # Add filename to data record
-
-        # Add to master table
-        master_table = pd.concat([master_table, df], axis=0)
-
-        #ocrreader.visualize_boxes()
+        # TODO: handle front (red) and back (blue)
+        segMask = labeldetect.color_segment_labels(img) # Red background
+        #segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.6)) # Light blue background
+        segMask = labeldetect.improve_binary_mask(segMask)
+        label_img, num_labels = labeldetect.find_labels(segMask)
+        lst_resampled_labels = labeldetect.resample_label(img, label_img, num_labels)
 
         if args["verbose"]:
             plt.figure()
-            plt.imshow(label_data['image'])
-            plt.title("ID " + str(label_data["label_id"]))
+            plt.imshow(img)
+
+            plt.figure()
+            plt.imshow(label_img)
+
+            print("number of labels detected: " + str(len(lst_resampled_labels)))
+
+        if not len(lst_resampled_labels) == 9:
+            print("Warning: Too many detected labels ...")
+            #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
+
+
+        for label_data in lst_resampled_labels:
+            if args["verbose"]:
+                print("")
+                print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
+
+            img_label = img_as_ubyte(label_data['image'])
+            ocrreader.read_image(img_label)
+
+            ocrtext = ocrreader.get_text()
+
+            if args["verbose"]:
+                for i in range(len(ocrtext)):
+                    print(ocrtext[i])
+
+            df = parsefronttext(ocrtext)
+
+
+            #  In case of no Alt Cat Number just pick a unique file name
+            if df["Alt Cat Number"][0] == "":
+                outfilename = Path(imgfilename).stem + "_labelID" + str(label_data["label_id"]) + ".tif"
+            else:
+                outfilename = df["Alt Cat Number"][0] + ".tif"
+
+            # Check that filename is unique otherwise create an extension of it to make unique
+            outpath = Path(args["output"], outfilename)
+            outpath = checkfilepath(outpath)
+            outfilename = outpath.name
+            imsave(str(outpath), img_label, check_contrast=False, plugin='pil', compression="tiff_lzw",
+                   resolution_unit=2, resolution=400)
+            df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+
+            # Add to master table
+            master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
+
+            #ocrreader.visualize_boxes()
+
+            if args["verbose"]:
+                plt.figure()
+                plt.imshow(label_data['image'])
+                plt.title("ID " + str(label_data["label_id"]))
 
     if args["verbose"]:
         plt.show()
 
     # Write Excel sheet to disk
-    master_table.to_excel(PurePath(args["output"], "test.xlsx").as_posix(), index=False)
+    master_table.to_excel(str(Path(args["output"], "test.xlsx")), index=False)
 
 
 if __name__ == '__main__':

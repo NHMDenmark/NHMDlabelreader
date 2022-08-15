@@ -20,7 +20,7 @@ limitations under the License.
 """
 
 import pytesseract
-import pandas as pd
+#import pandas as pd
 import cv2
 
 

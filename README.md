@@ -13,6 +13,7 @@ zbar
 libdmtx
 ImageMagick
 ```
+You also need to have an installation of ImageMagick library which seems to only work on UNIX/Linux/MacOS.
 
 Create virtual environment
 ```sh

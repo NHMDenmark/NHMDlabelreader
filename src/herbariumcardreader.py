@@ -35,7 +35,8 @@ import numpy as np
 # sys.path.append(str(Path(__file__).parent.parent))
 
 from labelreader.ocr import tesseract
-from labelreader.labeldetect import labeldetect
+#from labelreader.labeldetect import labeldetect
+from util.util import checkfilepath
 
 
 def empty_dataframe():
@@ -268,8 +269,14 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
         outfilename = Path(imgfilename).stem + "_image" + str(no_img) + "_page" + str(no_pages) + ".tif"
     else:
         outfilename = df["Alt Cat Number"][0] + ".tif"
-    imsave(str(Path(args["output"], outfilename)), img, check_contrast=False, plugin='pil', compression="tiff_lzw",
-           resolution_unit=2, resolution=600)
+
+    # Check that filename is unique otherwise create an extension of it to make unique
+    outpath = Path(args["output"], outfilename)
+    outpath = checkfilepath(outpath)
+    outfilename = outpath.name
+
+    imsave(str(outpath), img, check_contrast=False, plugin='pil', compression="tiff_lzw",
+           resolution_unit=2, resolution=args["resolution"])
     df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
 
     # Add to master table
