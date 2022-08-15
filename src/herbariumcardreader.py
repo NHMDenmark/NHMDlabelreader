@@ -19,14 +19,15 @@ See the License for the specific language governing permissions and
 limitations under the License. 
 """
 
-# import sys
 import argparse
 from skimage.io import imread, imsave
-from skimage.util import img_as_ubyte
+#from skimage.util import img_as_ubyte
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
 from pathlib import PurePath, Path
+from wand.image import Image
+import numpy as np
 
 # Adding path to ocr package - this can probably be done smarter
 # from pathlib import Path
@@ -246,6 +247,37 @@ def parsetext(ocrtext):
     return record
 
 
+def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table):
+    """Parse one image and create a row in the master_table"""
+    if args["verbose"]:
+        plt.figure()
+        plt.imshow(img)
+
+    ocrreader.read_image(img)
+
+    ocrtext = ocrreader.get_text()
+
+    if args["verbose"]:
+        for i in range(len(ocrtext)):
+            print(ocrtext[i])
+
+    df = parsetext(ocrtext)
+
+    # TODO: Write cropped image to output directory
+    #  In case of no Alt Cat Number just pick a unique random file name
+    if df["Alt Cat Number"][0] == "":
+        outfilename = Path(imgfilename).stem + "_image" + str(no_img) + "_page" + str(no_pages) + ".tif"
+    else:
+        outfilename = df["Alt Cat Number"][0] + ".tif"
+    imsave(str(Path(args["output"], outfilename)), img, check_contrast=False, plugin='pil', compression="tiff_lzw",
+           resolution_unit=2, resolution=600)
+    df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+
+    # Add to master table
+    master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
+    return master_table
+
+
 def main():
     """The main function of this script."""
     # construct the argument parser and parse the arguments
@@ -258,6 +290,8 @@ def main():
                     help="path and filename for Excel spreadsheet to write result to.")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
                     help="language that tesseract uses - depends on installed tesseract language packages")
+    ap.add_argument("-r", "--resolution", required=False, default=600, type=int,
+                    help="Set resolution in DPI of scanned images - used for rendering pdf pages so only relevant for PDF files")
     ap.add_argument("-v", "--verbose", required=False, action='store_true', default=False,
                     help="If set the program is verbose and will print out debug information")
 
@@ -272,43 +306,38 @@ def main():
     master_table = empty_dataframe()
 
     # Loop over a directory of images
+    no_img = 0 # Count number of images
+    no_pages = 0 # Count number of pages
     for imgfilename in args["image"]:
         print("Transcribing " + imgfilename)
-        # Read image with filename args["image"]
-        img = imread(imgfilename)
+        no_img += 1
+        # Check if it is a pdf file
+        if Path(imgfilename).suffix == '.pdf':
+            print("Reading pages in a pdf file")
+            # TODO: This assumes that the scan is in 600 ppi and only the last page is read in the pdf file
+            with Image(filename=imgfilename, resolution=args["resolution"]) as img_wand_all:
+                no_pages = 0
+                for img_wand in img_wand_all.sequence:
+                    img = np.array(img_wand)
+                    no_pages += 1
+                    master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table)
 
-        if args["verbose"]:
-            plt.figure()
-            plt.imshow(img)
+        elif Path(imgfilename).suffix == '.tif':
+            # Read image file
+            img = imread(imgfilename, plugin='pil')
+            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table)
+        else:
+            # Read image file
+            img = imread(imgfilename)
+            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table)
 
 
-
-        ocrreader.read_image(img)
-
-        ocrtext = ocrreader.get_text()
-
-        if args["verbose"]:
-            for i in range(len(ocrtext)):
-                print(ocrtext[i])
-
-        df = parsetext(ocrtext)
-
-
-        # TODO: Write cropped image to output directory
-        #  In case of no Alt Cat Number just pick a unique random file name
-        #outfilename = df["Alt Cat Number"][0] + ".png"
-        #imsave(PurePath(args["output"], outfilename).as_posix(), img_rgb)
-        outfilename = Path(imgfilename).name
-        df["Attachment"].iloc[0] = outfilename  # Add filename to data record
-
-        # Add to master table
-        master_table = pd.concat([master_table, df], axis=0)
-
+    # If verbose mode then show all opened figures
     if args["verbose"]:
         plt.show()
 
     # Write Excel sheet to disk
-    master_table.to_excel(PurePath(args["output"], "test.xlsx").as_posix(), index=False)
+    master_table.to_excel(PurePath(args["output"], "output.xlsx").as_posix(), index=False)
 
 
 if __name__ == '__main__':
