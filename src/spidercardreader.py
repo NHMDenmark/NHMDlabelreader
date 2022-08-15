@@ -215,7 +215,8 @@ def main():
     print("Using language = " + args["language"] + "\n")
 
     # Initialize the OCR reader object
-    ocrreader = tesseract.OCR(args["tesseract"], args["language"])
+    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1')
+    # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
     master_table = empty_dataframe()
 
@@ -273,6 +274,8 @@ def main():
             outpath = Path(args["output"], outfilename)
             outpath = checkfilepath(outpath)
             outfilename = outpath.name
+
+            # Save image
             imsave(str(outpath), img_label, check_contrast=False, plugin='pil', compression="tiff_lzw",
                    resolution_unit=2, resolution=400)
             df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
