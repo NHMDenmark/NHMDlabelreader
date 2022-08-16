@@ -82,6 +82,6 @@ def test_resample_label():
     segMask = labeldetect.color_segment_labels(img)
     segMask = labeldetect.improve_binary_mask(segMask)
     label_img, num_labels = labeldetect.find_labels(segMask)
-    lst_resampled_labels = labeldetect.resample_label(img, label_img, num_labels)
+    lst_resampled_labels = labeldetect.resample_label(img, label_img)
 
     assert len(lst_resampled_labels) == 9

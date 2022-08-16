@@ -19,7 +19,7 @@ See the License for the specific language governing permissions and
 limitations under the License. 
 """
 import numpy as np
-import math
+#import math
 from skimage.color import rgb2hsv
 from skimage.morphology import disk, closing, opening
 import skimage.measure  # Needed for label function and regionprop
@@ -91,7 +91,7 @@ def find_labels(mask):
     return label_img, num_labels
 
     
-def resample_label(img, label_img, num_labels):
+def resample_label(img, label_img):
     """Crop and rotate the label image to be axis aligned by resampling the label pixels.
         We assume that labels in images are rectangular, but can be oriented in anyway in the image.
     
@@ -99,7 +99,6 @@ def resample_label(img, label_img, num_labels):
          img: Image to process as an ndarray in either grayscale or RGB format.
          label_img: Labelled connected compomnents image with unique label identifier as ndarray
                     with dtype=np.int64.
-         num_labels: Number of distinct labels found in label_img
        Returns:
          a list of numpy arrays with same number of channels as img which contain the resampled labels.
     """
