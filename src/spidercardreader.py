@@ -35,7 +35,7 @@ from pathlib import Path
 
 from labelreader.ocr import tesseract
 from labelreader.labeldetect import labeldetect
-from util.util import checkfilepath
+from labelreader.util.util import checkfilepath
 
 
 def empty_dataframe():
@@ -215,7 +215,7 @@ def main():
     print("Using language = " + args["language"] + "\n")
 
     # Initialize the OCR reader object
-    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1')
+    ocrreader = tesseract.OCR(args["tesseract"], args["language"])
     # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
     master_table = empty_dataframe()

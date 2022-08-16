@@ -36,7 +36,7 @@ import numpy as np
 
 from labelreader.ocr import tesseract
 #from labelreader.labeldetect import labeldetect
-from util.util import checkfilepath
+from labelreader.util.util import checkfilepath
 
 
 def empty_dataframe():
