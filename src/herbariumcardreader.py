@@ -37,6 +37,7 @@ import numpy as np
 from labelreader.ocr import tesseract
 #from labelreader.labeldetect import labeldetect
 from labelreader.util.util import checkfilepath
+from labelreader.taxonchecker import taxonchecker
 
 
 def empty_dataframe():
@@ -44,20 +45,20 @@ def empty_dataframe():
         "Catalogue Number": [],
         "Alt Cat Number": [],
         "Publish": [],
-        "Count": [],
         "Other Remarks": [],
         "Order": [],
         "Family": [],
         "Genus1": [],
         "Species1": [],
-        "Determiner First Name": [],
-        "Determiner Last Name": [],
         "Determination Remarks": [],
+        "OCR full name": [],
+        "Corrected full name": [],
+        "Fuzzy match percentage": [],
+        "Determiner": [],
+        "Collector": [],
         "Country": [],
         "Locality": [],
         "Start Date": [],
-        "Collector First Name": [],
-        "Collector Last Name": [],
         "Attachment": []
     })
     return record
@@ -139,10 +140,20 @@ def isauthor(text):
 
 
 
-def parsetext(ocrtext):
+def letters_only(text):
+    """Clean the text and return a version with only letters.
+
+        text: String to clean
+        Return: A cleaned string
+    """
+    return ''.join([c for c in text if c.isalpha()])
+
+
+def parsetext(ocrtext, checker):
     """Parses the transcribed text from a paper card into appropriate data fields.
 
        ocrtext: A list of lists of strings - one for each line on the paper card.
+       checker: A TaxonChecker object
        Return record: Returns a Pandas data frame with the parsed transcribed data.
     """
 
@@ -151,7 +162,6 @@ def parsetext(ocrtext):
     country = ""
     locality = ""
     other = ""
-
 
     # Skip any beginning blank lines
     line_idx = 0
@@ -176,14 +186,23 @@ def parsetext(ocrtext):
         word_idx = 0
 
     # Parse taxon line
+    corrected_fullname = ""
     genus = ""
     if len(ocrtext[line_idx]) >= 1:
-        genus = ocrtext[line_idx][word_idx]
+        genus = ocrtext[line_idx][word_idx].lower().capitalize()
+        # res = checker.check_name(genus)
+        # if not isinstance(res, type(None)):
+        #    corrected_fullname += res[0]
+
         word_idx += 1
 
     species = ""
     if len(ocrtext[line_idx]) > 2:
-        species = ocrtext[line_idx][word_idx]
+        species = ocrtext[line_idx][word_idx].lower()
+        # res = checker.check_name(species)
+        # if not isinstance(res, type(None)):
+        #    corrected_fullname += res[0]
+
         word_idx += 1
 
     det_remarks = ""
@@ -221,34 +240,47 @@ def parsetext(ocrtext):
         else:
             # Add the remaining text to the Other Remarks field
             if len(other) > 0:
-                other += "\n"
+                other += "; "
             other += joined_line
+
+
+    # Clean up the genus name
+    genus = letters_only(genus)
+
+    # check taxonomic full name
+    ocr_fullname = " ".join([genus, species, det_remarks])
+    res = checker.check_full_name(ocr_fullname)
+    fuzzy_score = 0
+    # print(res)
+    if not isinstance(res, type(None)):
+        corrected_fullname = res[0]
+        fuzzy_score = res[1]
 
     record = pd.DataFrame({
         "Catalogue Number": [""],
         "Alt Cat Number": [alt_cat_number],
         "Publish": [1],
-        "Count": [""],
         "Other Remarks": [other],
         "Order": [""],
         "Family": ["Acanthaceae"],
         "Genus1": [genus],
         "Species1": [species],
-        "Determiner First Name": [""],
-        "Determiner Last Name": [""],
         "Determination Remarks": [det_remarks],
+        "OCR full name": [ocr_fullname],
+        "Corrected full name": [corrected_fullname],
+        "Fuzzy match percentage": [fuzzy_score],
+        "Determiner": [""],
+        "Collector": [""],
         "Country": [country],
         "Locality": [locality],
         "Start Date": [datetext],
-        "Collector First Name": [""],
-        "Collector Last Name": [""],
         "Attachment": [""]
     })
 
     return record
 
 
-def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table):
+def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker):
     """Parse one image and create a row in the master_table"""
     if args["verbose"]:
         plt.figure()
@@ -262,7 +294,7 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
         for i in range(len(ocrtext)):
             print(ocrtext[i])
 
-    df = parsetext(ocrtext)
+    df = parsetext(ocrtext, checker)
 
     #  In case of no Alt Cat Number just pick a unique random file name
     if df["Alt Cat Number"][0] == "":
@@ -281,6 +313,7 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
 
     # Add to master table
     master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
+
     return master_table
 
 
@@ -309,6 +342,9 @@ def main():
     # Initialize the OCR reader object
     ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
+    # Initialize taxon checker
+    checker = taxonchecker.TaxonChecker(dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3"))) # TODO: Fix this path
+
     master_table = empty_dataframe()
 
     # Loop over a directory of images
@@ -326,16 +362,16 @@ def main():
                 for img_wand in img_wand_all.sequence:
                     img = np.array(img_wand)
                     no_pages += 1
-                    master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table)
+                    master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
 
         elif Path(imgfilename).suffix == '.tif':
             # Read image file
             img = imread(imgfilename, plugin='pil')
-            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table)
+            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
         else:
             # Read image file
             img = imread(imgfilename)
-            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table)
+            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
 
 
     # If verbose mode then show all opened figures
