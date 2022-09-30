@@ -44,13 +44,14 @@ class TaxonChecker:
         self.dbconnection = sqlite3.connect(dbfilename)
 
         # TODO: Include selecting taxon subset from collection and institution_code
+        # TODO: Use taxontreedefid from collection to select taxonnames valid only for a specific collection
         #cur = self.dbconnection.cursor()
         #res = cur.execute('select id from institution where code = "NHMD"')
         #self.institution_id = res.fetchone()[0]
         #res = cur.execute('select id, spid from collection where name = "NHMD Vascular Plants"')
         #id, spid = res.fetchone()
 
-        self.taxontable = pd.read_sql("select id, name, fullname, parentfullname from taxonname;",
+        self.taxontable = pd.read_sql("select taxonid, name, fullname, parentfullname from taxonname;",
                                       self.dbconnection, index_col="id")
         self.fullname = self.taxontable['fullname']  # Pandas.Series
         self.name = self.taxontable['name']  # Pandas.Series
