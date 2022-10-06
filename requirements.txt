@@ -10,3 +10,4 @@ openpyxl>=3.0.10
 Wand>=0.6.9
 thefuzz==0.19.0
 python-Levenshtein==0.12.2
+pygbif
