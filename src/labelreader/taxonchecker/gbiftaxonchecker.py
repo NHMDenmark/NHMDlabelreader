@@ -39,6 +39,9 @@ class GBIFTaxonChecker:
         """
         res = species.name_lookup(q=querystring, rank="species", type="checklist", limit=1)
 
+        # The following is a too restrictive search
+        #res = species.name_lookup(q=querystring, rank="species", status="ACCEPTED", type="checklist", limit=1)
+
         if res['count'] == 0:
             return None
         else:

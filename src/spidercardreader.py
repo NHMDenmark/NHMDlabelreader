@@ -56,7 +56,7 @@ def empty_dataframe():
         "Genus1": [],
         "Species1": [],
         "Author name": [],
-        "Checked full taxonname": [],
+        "GBIF checked full taxon name": [],
         "Determiner First Name": [],
         "Determiner Last Name": [],
         "Country": [],
@@ -168,7 +168,8 @@ def parsefronttext(ocrtext):
             datetext = joined_line
         elif islocality(joined_line):
             # Pass out country
-            locality = ' '.join(ocrtext[idx][1:])
+            # locality = ' '.join(ocrtext[idx][1:])
+            locality = ' '.join(ocrtext[idx][0:])
         elif joined_line.isspace():
             continue  # Skip empty lines
         else:
@@ -179,6 +180,9 @@ def parsefronttext(ocrtext):
 
 
     # Check the taxon name
+    # This gives less hits
+    #checked_taxonname = taxonchecker.check_full_name(genus + " " + species + " " + author_name)
+    # This gives more hits
     checked_taxonname = taxonchecker.check_full_name(genus + " " + species)
 
     record = pd.DataFrame({
@@ -192,7 +196,7 @@ def parsefronttext(ocrtext):
         "Genus1": [genus],
         "Species1": [species],
         "Author name": [author_name],
-        "Checked full taxonname": [checked_taxonname],
+        "GBIF checked full taxon name": [checked_taxonname],
         "Determiner First Name": ["Ole"],
         "Determiner Last Name": ["Bøggild"],
         "Country": [country],

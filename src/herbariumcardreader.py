@@ -343,7 +343,7 @@ def main():
     ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
     # Initialize taxon checker
-    checker = taxonchecker.DBTaxonChecker(dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3"))) # TODO: Fix this path
+    checker = dbtaxonchecker.DBTaxonChecker(dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3")))
 
     master_table = empty_dataframe()
 
