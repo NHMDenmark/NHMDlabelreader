@@ -21,6 +21,7 @@ limitations under the License.
 
 # import sys
 import argparse
+import logging
 from skimage.io import imread, imsave
 from skimage.util import img_as_ubyte
 import matplotlib.pyplot as plt
@@ -53,9 +54,9 @@ def empty_dataframe():
         "Family": [],
         "Genus1": [],
         "Species1": [],
+        "Author name": [],
         "Determiner First Name": [],
         "Determiner Last Name": [],
-        "Determination Remarks": [],
         "Country": [],
         "Locality": [],
         "Start Date": [],
@@ -95,12 +96,12 @@ def islocality(text):
 
 def isauthor(text):
     """Return true if text is a taxonomic author.
-       Assumes that author is inclosed in parentheses.
+       Assumes that author name starts with a capital letter and might be enclosed in parentheses.
 
         text: String to analyse
         Return: Boolean
     """
-    if re.match('\((\d|\w|\s|[.,)])*', text):
+    if re.match('\(?[A-ZÆØÅ.](\d|\w|\s|[.,)])*', text):
         return True
     else:
         return False
@@ -138,12 +139,12 @@ def parsefronttext(ocrtext):
         species = ocrtext[line_idx][word_idx]
         word_idx += 1
 
-    det_remarks = ""
+    author_name = ""
     if len(ocrtext[line_idx]) > word_idx:
         # Handle the case with species names containing more than one word
         for idx in range(word_idx, len(ocrtext[line_idx])):
             if isauthor(ocrtext[line_idx][idx]):
-                det_remarks = ' '.join(ocrtext[line_idx][idx:])
+                author_name = ' '.join(ocrtext[line_idx][idx:])
                 break
             else:
                 species += " " + ocrtext[line_idx][idx]
@@ -182,9 +183,9 @@ def parsefronttext(ocrtext):
         "Family": [""],
         "Genus1": [genus],
         "Species1": [species],
+        "Author name": [author_name],
         "Determiner First Name": ["Ole"],
         "Determiner Last Name": ["Bøggild"],
-        "Determination Remarks": [det_remarks],
         "Country": [country],
         "Locality": [locality],
         "Start Date": [datetext],
@@ -311,6 +312,12 @@ def main():
 
     args = vars(ap.parse_args())
 
+    if args["verbose"]:
+        #logging.basicConfig(encoding='utf-8', level=logging.DEBUG)
+        logging.basicConfig(level=logging.INFO)
+    else:
+        #logging.basicConfig(encoding='utf-8', level=logging.WARN)
+        logging.basicConfig(level=logging.WARNING)
 
     print("Using language = " + args["language"] + "\n")
 
@@ -350,9 +357,11 @@ def main():
             plt.imshow(label_img)
             plt.title("label_img")
 
+            logging.info("number of labels detected: " + str(len(lst_resampled_labels)))
             print("number of labels detected: " + str(len(lst_resampled_labels)))
 
         if not len(lst_resampled_labels) == 9:
+            logging.warning("Warning: Too many detected labels ...")
             print("Warning: Too many detected labels ...")
             #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
 

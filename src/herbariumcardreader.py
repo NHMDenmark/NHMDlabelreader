@@ -37,7 +37,7 @@ import numpy as np
 from labelreader.ocr import tesseract
 #from labelreader.labeldetect import labeldetect
 from labelreader.util.util import checkfilepath
-from labelreader.taxonchecker import taxonchecker
+from labelreader.taxonchecker import dbtaxonchecker
 
 
 def empty_dataframe():
@@ -343,7 +343,7 @@ def main():
     ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
     # Initialize taxon checker
-    checker = taxonchecker.TaxonChecker(dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3"))) # TODO: Fix this path
+    checker = taxonchecker.DBTaxonChecker(dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3"))) # TODO: Fix this path
 
     master_table = empty_dataframe()
 
