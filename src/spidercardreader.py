@@ -41,6 +41,7 @@ from skimage.transform import EuclideanTransform, warp
 from labelreader.ocr import tesseract
 from labelreader.labeldetect import labeldetect
 from labelreader.util.util import checkfilepath
+from labelreader.taxonchecker import gbiftaxonchecker
 
 
 def empty_dataframe():
@@ -55,6 +56,7 @@ def empty_dataframe():
         "Genus1": [],
         "Species1": [],
         "Author name": [],
+        "Checked full taxonname": [],
         "Determiner First Name": [],
         "Determiner Last Name": [],
         "Country": [],
@@ -115,6 +117,8 @@ def parsefronttext(ocrtext):
        Return record: Returns a Pandas data frame with the parsed transcribed data.
     """
 
+    taxonchecker = gbiftaxonchecker.GBIFTaxonChecker()
+
     # Skip any beginning blank lines
     line_idx = 0
     for idx in range(0, len(ocrtext)):
@@ -173,6 +177,10 @@ def parsefronttext(ocrtext):
                 other += "\n"
             other += joined_line
 
+
+    # Check the taxon name
+    checked_taxonname = taxonchecker.check_full_name(genus + " " + species)
+
     record = pd.DataFrame({
         "Catalogue Number": [""],
         "Alt Cat Number": [alt_cat_number],
@@ -184,6 +192,7 @@ def parsefronttext(ocrtext):
         "Genus1": [genus],
         "Species1": [species],
         "Author name": [author_name],
+        "Checked full taxonname": [checked_taxonname],
         "Determiner First Name": ["Ole"],
         "Determiner Last Name": ["Bøggild"],
         "Country": [country],
