@@ -56,11 +56,13 @@ def empty_dataframe():
         "Genus1": [],
         "Species1": [],
         "Author name": [],
-        "GBIF checked full taxon name": [],
+        "Scientific name": [],
+        "GBIF checked scientific name": [],
         "Determiner First Name": [],
         "Determiner Last Name": [],
         "Country": [],
         "Locality": [],
+        "OCR Start Date": [],
         "Start Date": [],
         "Collector First Name": [],
         "Collector Last Name": [],
@@ -78,7 +80,7 @@ def isdate(text):
     """
     # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
     # Include a common OCR mistake of reading I as 1 as acceptable.
-    if re.match('\d{1,2}.[IVX1]+.\d{4}', text):
+    if re.match('^\d{1,2}[\.,]{1}[IVX1]{1,4}[\.,]{1}\d{4}', text):
         return True
     else:
         return False
@@ -90,7 +92,7 @@ def islocality(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('D,(\w|\s|[.,])+', text):
+    if re.match('^D,(\w|\s|[.,])+', text):
         return True
     else:
         return False
@@ -103,12 +105,77 @@ def isauthor(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('\(?[A-ZÆØÅ.](\d|\w|\s|[.,)])*', text):
+    if re.match('^\(?[A-ZÆØÅ\.](\d|\w|\s|[\.,)])*', text):
         return True
     else:
         return False
 
 
+def parsedate(text):
+    """Parse a date in the format accepted by isdate() and return a numerical date in DD-MM-YYYY format.
+
+        text: String to parse
+        Return: A date string in DD-MM-YYYY format or empty string if error occurs
+    """
+    # Remove prefix and suffix characters
+    res = re.search('^\d{1,2}[\.,]{1}[IVX1]{1,4}[\.,]{1}\d{4}', text)
+    if not res:
+        logging.warning("parsedate expects a date string as input!")
+        return ""
+    else:
+        cleantext = res.string[res.start():res.end()]
+
+    # Split into Day, Month, Year parts
+    parts = re.split("[\.,]{1}", cleantext)
+    if len(parts) == 3:
+        day = parts[0]
+        month = parts[1]
+        year = parts[2]
+    else:
+        logging.warning("parsedate expects a date string as input: Missing either day, month or year.")
+        return ""
+
+    # Convert roman numerals into numerical month
+    # Convert 1 to I in month
+
+    # Check for 4 - 12
+    res = re.search("(X|V)", month)
+    if res:
+        res2 = re.search('(I|1)+', month)
+        if res2 and res2.start() < res.start():
+            if res.string[res.start()] == 'V':
+                month = 4
+            elif res.string[res.start()] == 'X':
+                month = 9
+            else:
+                logging.warning("parsedate expects a date string as input: Unknown roman numeral in month = " + str(month))
+                return ""
+        elif res2 and res2.start() > res.start():
+            if res.string[res.start()] == 'V':
+                month = 5 + res2.end()-res2.start()
+            elif res.string[res.start()] == 'X':
+                month = 10 + res2.end() - res2.start()
+            else:
+                logging.warning("parsedate expects a date string as input: Unknown roman numeral in month = " + str(month))
+                return ""
+        else:
+            if res.string[res.start()] == 'V':
+                month = 5
+            elif res.string[res.start()] == 'X':
+                month = 10
+            else:
+                logging.warning("parsedate expects a date string as input: Unknown roman numeral in month = " + str(month))
+                return ""
+    else:
+        res2 = re.match('^(I|1)+', month)
+        if res2:
+            month = res2.end() - res2.start()
+        else:
+            logging.warning("parsedate expects a date string as input: Unknown roman numeral in month = " + str(month))
+            return ""
+
+    # Return formatted date
+    return day + "/" + str(month) + "/" + year
 
 def parsefronttext(ocrtext):
     """Parses the transcribed text from a paper card into appropriate data fields.
@@ -156,7 +223,7 @@ def parsefronttext(ocrtext):
     line_idx += 1 # Next line
 
     # Initialize variables
-    datetext = ""
+    ocrdatetext = ""
     country = "Denmark"
     locality = ""
     other = ""
@@ -165,7 +232,7 @@ def parsefronttext(ocrtext):
     for idx in range(line_idx, len(ocrtext)):
         joined_line = ' '.join(ocrtext[idx])
         if isdate(joined_line):
-            datetext = joined_line
+            ocrdatetext = joined_line
         elif islocality(joined_line):
             # Pass out country
             # locality = ' '.join(ocrtext[idx][1:])
@@ -178,12 +245,15 @@ def parsefronttext(ocrtext):
                 other += "\n"
             other += joined_line
 
+    # Convert date format
+    datetext = parsedate(ocrdatetext)
 
     # Check the taxon name
     # This gives less hits
     #checked_taxonname = taxonchecker.check_full_name(genus + " " + species + " " + author_name)
     # This gives more hits
-    checked_taxonname = taxonchecker.check_full_name(genus + " " + species)
+    taxonname = genus + " " + species + " " + author_name
+    checked_gbif_taxonname = taxonchecker.check_full_name(genus + " " + species)
 
     record = pd.DataFrame({
         "Catalogue Number": [""],
@@ -196,11 +266,13 @@ def parsefronttext(ocrtext):
         "Genus1": [genus],
         "Species1": [species],
         "Author name": [author_name],
-        "GBIF checked full taxon name": [checked_taxonname],
+        "Scientific name": [taxonname],
+        "GBIF checked scientific name": [checked_gbif_taxonname],
         "Determiner First Name": ["Ole"],
         "Determiner Last Name": ["Bøggild"],
         "Country": [country],
         "Locality": [locality],
+        "OCR Start Date": [ocrdatetext],
         "Start Date": [datetext],
         "Collector First Name": ["Ole"],
         "Collector Last Name": ["Bøggild"],
