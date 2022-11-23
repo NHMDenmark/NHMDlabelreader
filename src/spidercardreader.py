@@ -342,8 +342,9 @@ def main():
         img = imread(imgfilename)
 
         # TODO: handle front (red) and back (blue)
-        segMask = labeldetect.color_segment_labels(img) # Red background
-        #segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.6)) # Light blue background
+        # TODO: Detect background color and perform different processing depending on this
+        #segMask = labeldetect.color_segment_labels(img) # Red background
+        segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.7)) # Light blue background
         segMaskImproved = labeldetect.improve_binary_mask(segMask)
         label_img, num_labels = labeldetect.find_labels(segMaskImproved)
 
@@ -364,13 +365,13 @@ def main():
             plt.imshow(label_img)
             plt.title("label_img")
 
-            logging.info("number of labels detected: " + str(len(lst_resampled_labels)))
+            # logging.info("number of labels detected: " + str(len(lst_resampled_labels)))
             print("number of labels detected: " + str(len(lst_resampled_labels)))
 
         if not len(lst_resampled_labels) == 9:
-            logging.warning("Warning: Too many detected labels ...")
-            print("Warning: Too many detected labels ...")
-            #return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
+            logging.warning("Warning: Wrong number of detected labels = " + str(len(lst_resampled_labels)))
+            # print("Warning: Wrong number of detected labels = " + str(len(lst_resampled_labels)))
+            # return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
 
 
         for label_data in lst_resampled_labels:
