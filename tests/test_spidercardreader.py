@@ -135,3 +135,5 @@ def test_parsedate():
     date = spidercardreader.parsedate("A.4.F")
     assert date == ""
 
+    date = spidercardreader.parsedate("    1.XII.1965")
+    assert date == ""
