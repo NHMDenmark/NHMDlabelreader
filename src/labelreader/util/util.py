@@ -119,7 +119,7 @@ def isromandate(text):
     if re.match(r"^\d{1,2}[.,][IVX1]{1,4}[.,]\d{4}", text):
         # Split into Day, Month, Year parts
         parts = re.split(r"[.,]", text)
-        if len(parts) == 3:
+        if len(parts) >= 3:
             day = int(parts[0])
 
             month = roman2int(parts[1])
@@ -154,13 +154,13 @@ def parseromandate(text):
     # Remove prefix and suffix characters
     res = re.search(r"^\d{1,2}[.,]{1}[IVX1]{1,4}[.,]{1}\d{4}", text)
     if not res:
-        logging.warning("parsedate expects a date string as input!")
+        logging.warning("parseromandate expects a date string as input!")
         return ""
     else:
         cleantext = res.string[res.start():res.end()]
 
     if not isromandate(text):
-        logging.warning("parsedate expects a date string as input!")
+        logging.warning("parseromandate expects a date string as input!")
         return ""
 
     # Split into Day, Month, Year parts
@@ -169,12 +169,12 @@ def parseromandate(text):
         day = parts[0]
         month = roman2int(parts[1])
         if month == None:
-            logging.warning("parsedate expects a date string as input: Month is unknown = " + parts[1])
+            logging.warning("parseromandate expects a date string as input: Month is unknown = " + parts[1])
             return ""
         year = parts[2]
     else:
-        logging.warning("parsedate expects a date string as input: Missing either day, month or year.")
+        logging.warning("parseromandate expects a date string as input: Missing either day, month or year.")
         return ""
 
     # Return formatted date
-    return day + "-" + str(month) + "-" + year
+    return "%02d" % int(day) + "-" + "%02d" % month + "-" + year

@@ -66,6 +66,7 @@ def test_isromandate():
     assert util.isromandate("1.X.1965")
     assert util.isromandate("1.XI.1965")
     assert util.isromandate("1.XII.1965")
+    assert util.isromandate("1.XII.1965.")
 
     # Check some invalid dates
     assert not util.isromandate("101.XII.1965")
@@ -81,40 +82,43 @@ def test_isromandate():
 def test_parseromandate():
     # Check valid dates
     date = util.parseromandate("1.I.1965")
-    assert date == "1-1-1965"
+    assert date == "01-01-1965"
 
     date = util.parseromandate("27.I1.1965")
-    assert date == "27-2-1965"
+    assert date == "27-02-1965"
 
     date = util.parseromandate("27.111.1965")
-    assert date == "27-3-1965"
+    assert date == "27-03-1965"
 
     date = util.parseromandate("1.IV.1965")
-    assert date == "1-4-1965"
+    assert date == "01-04-1965"
 
     date = util.parseromandate("1.V.1965")
-    assert date == "1-5-1965"
+    assert date == "01-05-1965"
 
     date = util.parseromandate("1.VI.1965")
-    assert date == "1-6-1965"
+    assert date == "01-06-1965"
 
     date = util.parseromandate("1.VII.1965")
-    assert date == "1-7-1965"
+    assert date == "01-07-1965"
 
     date = util.parseromandate("1.VIII.1965")
-    assert date == "1-8-1965"
+    assert date == "01-08-1965"
 
     date = util.parseromandate("1.IX.1965")
-    assert date == "1-9-1965"
+    assert date == "01-09-1965"
 
     date = util.parseromandate("1.X.1965")
-    assert date == "1-10-1965"
+    assert date == "01-10-1965"
 
     date = util.parseromandate("1.XI.1965")
-    assert date == "1-11-1965"
+    assert date == "01-11-1965"
 
     date = util.parseromandate("1.XII.1965")
-    assert date == "1-12-1965"
+    assert date == "01-12-1965"
+
+    date = util.parseromandate("1.XII.1965.")
+    assert date == "01-12-1965"
 
 
     # Check some invalid dates

@@ -329,8 +329,8 @@ def main():
     print("Using language = " + args["language"] + "\n")
 
     # Initialize the OCR reader object
-    # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3')
-    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 2')
+    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3')
+    # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 2')
     # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
     master_table = empty_dataframe()
