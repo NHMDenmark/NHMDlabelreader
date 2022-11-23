@@ -42,6 +42,7 @@ from labelreader.ocr import tesseract
 from labelreader.labeldetect import labeldetect
 from labelreader.util.util import checkfilepath
 from labelreader.taxonchecker import gbiftaxonchecker
+from labelreader.util.util import isromandate, parseromandate
 
 
 def empty_dataframe():
@@ -71,107 +72,6 @@ def empty_dataframe():
     return record
 
 
-def roman2int(roman):
-    """Convert a roman numeral string into integer.
-       Also interprets 1 to I.
-
-       roman: String with a roman numeral
-       Return: An integer representation of the roman numeral. If an error occurs during parsing it return None
-    """
-
-    # Check for 4 - 12
-    res = re.search("(V|X)", roman)
-    if res:
-
-        # check that I only occurs on one side of either V or X
-        ressplit = re.split("[VX]", roman)
-        if len(ressplit) == 2:
-            if not (ressplit[0] == '' or ressplit[1] == ''):
-                return None
-        else:
-            return None
-
-        res2 = re.search('(I|1)+', roman)
-        if res2 and res2.start() < res.start():
-            if (res2.end() - res2.start()) != 1:
-                logging.warning(
-                    "roman2int expects a date string as input: Unknown roman numeral = " + str(roman))
-                return None
-
-            if res.string[res.start()] == 'V':
-                number = 4
-            elif res.string[res.start()] == 'X':
-                number = 9
-            else:
-                logging.warning(
-                    "roman2int expects a date string as input: Unknown roman numeral = " + str(roman))
-                return None
-        elif res2 and res2.start() > res.start():
-            if res.string[res.start()] == 'V':
-                number = 5 + res2.end() - res2.start()
-            elif res.string[res.start()] == 'X':
-                number = 10 + res2.end() - res2.start()
-            else:
-                logging.warning(
-                    "roman2int expects a date string as input: Unknown roman numeral = " + str(roman))
-                return None
-        else:
-            if res.string[res.start()] == 'V':
-                number = 5
-            elif res.string[res.start()] == 'X':
-                number = 10
-            else:
-                logging.warning(
-                    "roman2int expects a date string as input: Unknown roman numeral = " + str(roman))
-                return None
-    else:
-        res2 = re.match('^(I|1)+', roman)
-        if res2:
-            number = res2.end() - res2.start()
-        else:
-            logging.warning("roman2int expects a date string as input: Unknown roman numeral = " + str(roman))
-            return None
-
-    return number
-
-
-def isdate(text):
-    """Return true if text has the date format used by Bøggild.
-       Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
-       Allows for common OCR mistake, meaning that if month contains '1' it will be interpreted as 'I'.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
-    # Include a common OCR mistake of reading I as 1 as acceptable.
-    if re.match('^\d{1,2}[\.,]{1}[IVX1]{1,4}[\.,]{1}\d{4}', text):
-        # Split into Day, Month, Year parts
-        parts = re.split("[\.,]{1}", text)
-        if len(parts) == 3:
-            day = int(parts[0])
-
-            month = roman2int(parts[1])
-            if month == None:
-                return False
-
-            year = int(parts[2])
-
-            # Check day
-            retval = (day >= 1 and day <= 31)
-
-            # Check month
-            retval = retval and (month >= 1 and month <= 12)
-
-            # Check year
-            retval = retval and (year >= 0)
-
-            return retval
-        else:
-            return False
-    else:
-        return False
-
 def islocality(text):
     """Return true if text has the locality format used by Bøggild.
        Assume the locality text starts with 'D,'
@@ -198,39 +98,6 @@ def isauthor(text):
         return False
 
 
-def parsedate(text):
-    """Parse a date in the format accepted by isdate() and return a numerical date in DD-MM-YYYY format.
-
-        text: String to parse
-        Return: A date string in DD-MM-YYYY format or empty string if error occurs
-    """
-    # Remove prefix and suffix characters
-    res = re.search('^\d{1,2}[\.,]{1}[IVX1]{1,4}[\.,]{1}\d{4}', text)
-    if not res:
-        logging.warning("parsedate expects a date string as input!")
-        return ""
-    else:
-        cleantext = res.string[res.start():res.end()]
-
-    if not isdate(text):
-        logging.warning("parsedate expects a date string as input!")
-        return ""
-
-    # Split into Day, Month, Year parts
-    parts = re.split("[\.,]{1}", cleantext)
-    if len(parts) == 3:
-        day = parts[0]
-        month = roman2int(parts[1])
-        if month == None:
-            logging.warning("parsedate expects a date string as input: Month is unknown = " + parts[1])
-            return ""
-        year = parts[2]
-    else:
-        logging.warning("parsedate expects a date string as input: Missing either day, month or year.")
-        return ""
-
-    # Return formatted date
-    return day + "-" + str(month) + "-" + year
 
 def parsefronttext(ocrtext):
     """Parses the transcribed text from a paper card into appropriate data fields.
@@ -286,7 +153,7 @@ def parsefronttext(ocrtext):
     # Parse the remaining lines
     for idx in range(line_idx, len(ocrtext)):
         joined_line = ' '.join(ocrtext[idx])
-        if isdate(joined_line):
+        if isromandate(joined_line):
             ocrdatetext = joined_line
         elif islocality(joined_line):
             # Pass out country
@@ -301,7 +168,7 @@ def parsefronttext(ocrtext):
             other += joined_line
 
     # Convert date format
-    datetext = parsedate(ocrdatetext)
+    datetext = parseromandate(ocrdatetext)
 
     # Check the taxon name
     # This gives less hits
