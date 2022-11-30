@@ -92,7 +92,7 @@ def isauthor(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('^\(?[A-ZÆØÅ\.](\d|\w|\s|[\.,)])*', text):
+    if re.match('^\(?[A-ZÆØÅ.](\d|\w|\s|[.,)])*', text):
         return True
     else:
         return False
@@ -410,7 +410,7 @@ def main():
             # Add to master table
             master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
 
-            #ocrreader.visualize_boxes()
+            # ocrreader.visualize_boxes()
 
             if args["verbose"]:
                 plt.figure()
