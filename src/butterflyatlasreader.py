@@ -48,16 +48,48 @@ def empty_dataframe():
 def isSpeciesName(text):
     """Return true if text has the format of a species name.
 
-            text: String to analyse
-            Return: Boolean
-        """
+        text: String to analyse
+        Return: Boolean
+    """
     if re.match('^—(\w|\s|\d|[().,])+', text):
         return True
     else:
         return False
 
+def isFamilyName(text):
+    """Return true if text has the format of a family name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('(\w|\s|)+(IDEA|idea)', text):
+        return True
+    else:
+        return False
 
 
+def isSubFamilyName(text):
+    """Return true if text has the format of a sub-family name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('(\w|\s|)+(IDAE|idae)', text):
+        return True
+    else:
+        return False
+
+
+def isSuperGenusName(text):
+    """Return true if text has the format of a super-genus name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('(\w|\s|)+(INAE|inae)', text):
+        return True
+    else:
+        return False
 def parsetable(ocrtext, taxon_tree):
     # TOOD: Parse table content
 
@@ -104,23 +136,34 @@ def parsetable(ocrtext, taxon_tree):
             })
             df = pd.concat([df, record], axis=0, ignore_index=True)
         else:
+            # Reset taxon_tree dictionary
             if lastLineSpecies:
-                taxon_tree = dict()
+                if "Genus" in taxon_tree:
+                    taxon_tree.pop("Genus")
+                elif "Super-Genus" in taxon_tree:
+                    taxon_tree.pop("Super-Genus")
+                elif "Sub-Family" in taxon_tree:
+                    taxon_tree.pop("Sub-Family")
+                elif "Family" in taxon_tree:
+                    taxon_tree.pop("Family")
+                elif "Sub-Order" in taxon_tree:
+                    taxon_tree.pop("Sub-Order")
 
-            if "Sub-Order" in taxon_tree:
-                if "Family" in taxon_tree:
-                    if "Sub-Family" in taxon_tree:
-                        if "Super-Genus" in taxon_tree:
-                            if not ("Genus" in taxon_tree):
-                                taxon_tree["Genus"] = linetext
-                        else:
-                            taxon_tree["Super-Genus"] = linetext
-                    else:
-                        taxon_tree["Sub-Family"] = linetext
-                else:
-                    taxon_tree["Family"] = linetext
-            else:
+            # Add next line to appropriate field
+            if not ("Sub-Order" in taxon_tree):
                 taxon_tree["Sub-Order"] = linetext
+                
+            elif isFamilyName(linetext) and not ("Family" in taxon_tree):
+                taxon_tree["Family"] = linetext
+
+            elif isSubFamilyName(linetext) and not ("Sub-Family" in taxon_tree):
+                taxon_tree["Sub-Family"] = linetext
+
+            elif isSuperGenusName(linetext) and not ("Super-Genus" in taxon_tree):
+                taxon_tree["Super-Genus"] = linetext
+
+            elif not ("Genus" in taxon_tree):
+                taxon_tree["Genus"] = linetext
 
     return df, taxon_tree
 
@@ -203,6 +246,7 @@ def main():
                 for img_wand in img_wand_all.sequence:
                     img = np.array(img_wand)
                     no_pages += 1
+                    print("Processing page " + str(no_pages))
                     master_table, taxon_tree = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, taxon_tree)
         elif Path(imgfilename).suffix == '.tif':
             no_pages = int(imgfilename.split('_')[3])
