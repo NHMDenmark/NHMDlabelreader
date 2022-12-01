@@ -19,6 +19,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
+#  Copyright (c) 2022  Natural History Museum of Denmark (NHMD)
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
 import argparse
 from skimage.io import imread, imsave
 import matplotlib.pyplot as plt
@@ -36,14 +51,25 @@ from labelreader.util.util import checkfilepath
 def empty_dataframe():
     record = pd.DataFrame({
         "Sub-Order": [],
+        "Super-Family": [],
         "Family": [],
         "Sub-Family": [],
-        "Super-Genus": [],
         "Genus": [],
         "Species": []
     })
     return record
 
+
+def isAuthorName(text):
+    """Return true if text has the format of an author name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^[(](\w|\s|[&])+[,]{0,1}(\d|\s)*[)]', text):
+        return True
+    else:
+        return False
 
 def isSpeciesName(text):
     """Return true if text has the format of a species name.
@@ -51,50 +77,70 @@ def isSpeciesName(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('^—(\w|\s|\d|[().,])+', text):
+    # NOTE: Added capital letters to counter OCR errors
+    if re.match('^(—|-)\s+[A-Za-zæøåüı]+(\w|\s|\d|[(),])+', text):
         return True
     else:
         return False
 
-def isFamilyName(text):
+def isSubOrder(text):
+    """Return true if text has the format of a sub-order name.
+
+            text: String to analyse
+            Return: Boolean
+        """
+    if re.match('^([A-Z-—]|\s)+A', text):
+        return True
+    else:
+        return False
+
+
+def isSuperFamilyName(text):
     """Return true if text has the format of a family name.
 
         text: String to analyse
         Return: Boolean
     """
-    if re.match('(\w|\s|)+(IDEA|idea)', text):
+    if re.match('^[A-Z]+IDEA', text):
+        return True
+    else:
+        return False
+
+
+def isFamilyName(text):
+    """Return true if text has the format of a sub-family name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^[A-Z]+IDAE[ ]*[(]{0,1}(\w|\s)*[)]{0,1}[ ]{0,1}[.]*', text):
         return True
     else:
         return False
 
 
 def isSubFamilyName(text):
-    """Return true if text has the format of a sub-family name.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('(\w|\s|)+(IDAE|idae)', text):
-        return True
-    else:
-        return False
-
-
-def isSuperGenusName(text):
     """Return true if text has the format of a super-genus name.
 
         text: String to analyse
         Return: Boolean
     """
-    if re.match('(\w|\s|)+(INAE|inae)', text):
+    if re.match('^\w+inae', text):
         return True
     else:
         return False
 def parsetable(ocrtext, taxon_tree):
-    # TOOD: Parse table content
+    """Parse table content
+
+        ocrtext: list of lists of strings to be parsed
+        taxon_tree: Dictionary containing the taxonomic levels and currently read values
+        Return df, taxon_tree: A Pandas dataframe with parsed data and the current taxon_tree dictionary containing
+                               the state of the parser.
+    """
 
     df = empty_dataframe()
     lastLineSpecies = False
+    previousLineWasFamily = False
 
     # Loop over lines in ocrtext
     for line in ocrtext:
@@ -102,7 +148,10 @@ def parsetable(ocrtext, taxon_tree):
         if isSpeciesName(linetext):
             # print("Species: " + linetext)
             lastLineSpecies = True
-            species = ' '.join(line[1:4]) # TODO: Does this always work? No - to fix
+            if len(line) <= 4:
+                species = ' '.join(line[1:])
+            else:
+                species = ' '.join(line[1:-1]) # TODO: Does this always work? No - to fix
             #  If isSpeciesName then reuse fields from taxon_tree, but check if exists
             #  Else reset taxon_tree = dict() and read other fields in order
 
@@ -111,16 +160,16 @@ def parsetable(ocrtext, taxon_tree):
                 level1 = taxon_tree["Sub-Order"]
 
             level2 = ""
-            if "Family" in taxon_tree:
-                level2 = taxon_tree["Family"]
+            if "Super-Family" in taxon_tree:
+                level2 = taxon_tree["Super-Family"]
 
             level3 = ""
-            if "Sub-Family" in taxon_tree:
-                level3 = taxon_tree["Sub-Family"]
+            if "Family" in taxon_tree:
+                level3 = taxon_tree["Family"]
 
             level4 = ""
-            if "Super-Genus" in taxon_tree:
-                level4 = taxon_tree["Super-Genus"]
+            if "Sub-Family" in taxon_tree:
+                level4 = taxon_tree["Sub-Family"]
 
             level5 = ""
             if "Genus" in taxon_tree:
@@ -128,9 +177,9 @@ def parsetable(ocrtext, taxon_tree):
 
             record = pd.DataFrame({
                         "Sub-Order": [level1],
-                        "Family": [level2],
-                        "Sub-Family": [level3],
-                        "Super-Genus": [level4],
+                        "Super-Family": [level2],
+                        "Family": [level3],
+                        "Sub-Family": [level4],
                         "Genus": [level5],
                         "Species": [species]
             })
@@ -138,36 +187,50 @@ def parsetable(ocrtext, taxon_tree):
         else:
             # Reset taxon_tree dictionary
             if lastLineSpecies:
+                lastLineSpecies = False
                 if "Genus" in taxon_tree:
                     taxon_tree.pop("Genus")
-                elif "Super-Genus" in taxon_tree:
-                    taxon_tree.pop("Super-Genus")
-                elif "Sub-Family" in taxon_tree:
+                if isSubFamilyName(linetext) and ("Sub-Family" in taxon_tree):
                     taxon_tree.pop("Sub-Family")
-                elif "Family" in taxon_tree:
+                elif isFamilyName(linetext) and ("Family" in taxon_tree):
+                    if "Sub-Family" in taxon_tree:
+                        taxon_tree.pop("Sub-Family")
                     taxon_tree.pop("Family")
-                elif "Sub-Order" in taxon_tree:
-                    taxon_tree.pop("Sub-Order")
+                elif isSuperFamilyName(linetext) and ("Super-Family" in taxon_tree):
+                    if "Sub-Family" in taxon_tree:
+                        taxon_tree.pop("Sub-Family")
+                    if "Family" in taxon_tree:
+                        taxon_tree.pop("Family")
+                    taxon_tree.pop("Super-Family")
+                elif isSubOrder(linetext) and ("Sub-Order" in taxon_tree):
+                    taxon_tree = dict()
 
             # Add next line to appropriate field
-            if not ("Sub-Order" in taxon_tree):
+            if previousLineWasFamily: # Handle 2-lines Family names
+                previousLineWasFamily = False
+                if isAuthorName(linetext) and ("Family" in taxon_tree):
+                    taxon_tree["Family"] = taxon_tree["Family"] + " " + linetext
+
+            elif isSuperFamilyName(linetext) and not ("Super-Family" in taxon_tree):
+                taxon_tree["Super-Family"] = linetext
+
+            elif isSubOrder(linetext) and not ("Sub-Order" in taxon_tree):
+                # Important that this comes after Super-Family due to name checker
                 taxon_tree["Sub-Order"] = linetext
-                
+
             elif isFamilyName(linetext) and not ("Family" in taxon_tree):
                 taxon_tree["Family"] = linetext
+                previousLineWasFamily = True
 
             elif isSubFamilyName(linetext) and not ("Sub-Family" in taxon_tree):
                 taxon_tree["Sub-Family"] = linetext
-
-            elif isSuperGenusName(linetext) and not ("Super-Genus" in taxon_tree):
-                taxon_tree["Super-Genus"] = linetext
 
             elif not ("Genus" in taxon_tree):
                 taxon_tree["Genus"] = linetext
 
     return df, taxon_tree
 
-def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, taxon_tree):
+def process_image(img, no_pages, args, ocrreader, master_table, taxon_tree):
     """Parse one image and create a row in the master_table"""
     if args["verbose"]:
         plt.figure()
@@ -181,7 +244,7 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
         imghalf = img[500:5400, 300:int(width * 0.52), :]
     else: #  Odd pages
         #imghalf = img[900:10800, 0:int(width*0.45)]
-        imghalf = img[500:5400, 0:int(width * 0.45), :]
+        imghalf = img[500:5400, 0:int(width * 0.44), :]
 
     if args["verbose"]:
         plt.figure()
@@ -247,17 +310,17 @@ def main():
                     img = np.array(img_wand)
                     no_pages += 1
                     print("Processing page " + str(no_pages))
-                    master_table, taxon_tree = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, taxon_tree)
+                    master_table, taxon_tree = process_image(img, no_pages, args, ocrreader, master_table, taxon_tree)
         elif Path(imgfilename).suffix == '.tif':
             no_pages = int(imgfilename.split('_')[3])
             # Read image file
             img = imread(imgfilename, plugin='pil')
-            master_table, taxon_tree = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, taxon_tree)
+            master_table, taxon_tree = process_image(img, no_pages, args, ocrreader, master_table, taxon_tree)
         else:
             no_pages = int(imgfilename.split('_')[3])
             # Read image file
             img = imread(imgfilename)
-            master_table, taxon_tree = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, taxon_tree)
+            master_table, taxon_tree = process_image(img, no_pages, args, ocrreader, master_table, taxon_tree)
 
 
     # Write Excel sheet to disk

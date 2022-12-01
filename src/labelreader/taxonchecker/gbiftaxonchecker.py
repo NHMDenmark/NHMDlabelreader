@@ -37,6 +37,9 @@ class GBIFTaxonChecker:
             querystring: A string containing a full species name (Starting with the Genus name)
             Returns: None if no match, otherwise the full name closest to querystring
         """
+
+        # TODO: Restrict the search to Danish national checklist? Or make it optional?
+        # https://www.gbif.org/dataset/4b3e4a71-704a-485c-917c-20a89944ea37
         res = species.name_lookup(q=querystring, rank="species", type="checklist", limit=1)
 
         # The following is a too restrictive search
