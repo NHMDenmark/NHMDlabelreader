@@ -19,23 +19,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 
-#  Copyright (c) 2022  Natural History Museum of Denmark (NHMD)
-#
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-#
-#  http://www.apache.org/licenses/LICENSE-2.0
-#
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-#
-
 import argparse
-from skimage.io import imread, imsave
+from skimage.io import imread
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
@@ -43,9 +28,8 @@ from pathlib import PurePath, Path
 from wand.image import Image
 import numpy as np
 
-
 from labelreader.ocr import tesseract
-from labelreader.util.util import checkfilepath
+#from labelreader.util.util import checkfilepath
 
 
 def empty_dataframe():
@@ -60,13 +44,41 @@ def empty_dataframe():
     return record
 
 
-def isAuthorName(text):
+def cleanPrefix(text):
+    """Removes prefixed whitespace, digits, and dashes.
+
+        text: String to analyse
+        Return: Clean string
+    """
+    return re.sub('^(\d|\s)*([‚]|—|-)+\s*', '', text)
+
+def cleanPostfix(text):
+    """Removes postfixed whitespace, stars, and dots.
+
+        text: String to analyse
+        Return: Clean string
+    """
+    return re.sub('\s*([.*]|\d|[a-z])+$', '', text)
+
+def isFamilyAuthorName(text):
     """Return true if text has the format of an author name.
 
         text: String to analyse
         Return: Boolean
     """
-    if re.match('^[(](\w|\s|[&])+[,]{0,1}(\d|\s)*[)]', text):
+    if re.match('^[(](\w|\s|[&,])+[,]{0,1}(\d|\s)*[)]', text):
+        return True
+    else:
+        return False
+
+
+def isGenusAuthorName(text):
+    """Return true if text has the format of a genus author name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^[(]?(\w|\s|[&,])+[,]{0,1}(\d|\s)*[)]?', text):
         return True
     else:
         return False
@@ -78,18 +90,42 @@ def isSpeciesName(text):
         Return: Boolean
     """
     # NOTE: Added capital letters to counter OCR errors
-    if re.match('^(—|-)\s+[A-Za-zæøåüı]+(\w|\s|\d|[(),])+', text):
+    if re.match('^(\d|\s)*(—|-|[‚.])+\s+([A-Za-zæøåüı10»«\]]|—|-)*(\w|\s|\d|[(),])+', text):
         return True
     else:
         return False
 
-def isSubOrder(text):
-    """Return true if text has the format of a sub-order name.
+
+def isGenusName(text):
+    """Return true if text has the format of a genus name.
 
             text: String to analyse
             Return: Boolean
         """
-    if re.match('^([A-Z-—]|\s)+A', text):
+    if re.match('^[A-Zı]+(\w|\s|\d|[ı(),])+', text):
+        return True
+    else:
+        return False
+
+def isSubFamilyName(text):
+    """Return true if text has the format of a super-genus name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^[A-Z]\w+inae', text):
+        return True
+    else:
+        return False
+
+def isFamilyName(text):
+    """Return true if text has the format of a sub-family name.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    # NOTE: Added capital letters to counter OCR errors
+    if re.match('^[A-Z]+(IDAE|HDAE)[ ]*[(]{0,1}(\w|\s)*[)]{0,1}[ ]{0,1}[.]*', text):
         return True
     else:
         return False
@@ -101,134 +137,152 @@ def isSuperFamilyName(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('^[A-Z]+IDEA', text):
+    # NOTE: Added capital letters to counter OCR errors
+    if re.match('^([A-Z]|\s)+(IDEA|HDEA)', text):
+        return True
+    else:
+        return False
+
+def isSubOrder(text):
+    """Return true if text has the format of a sub-order name.
+
+            text: String to analyse
+            Return: Boolean
+        """
+    if re.match('^([A-Z-—]|\s)+A', text) and not isSuperFamilyName(text):
         return True
     else:
         return False
 
 
-def isFamilyName(text):
-    """Return true if text has the format of a sub-family name.
-
-        text: String to analyse
-        Return: Boolean
+class TaxonTreeParser():
+    """Representation of the taxon parse tree to be used by the parser.
+       Internally the tree is a dictionary containing the taxonomic levels and currently read values
     """
-    if re.match('^[A-Z]+IDAE[ ]*[(]{0,1}(\w|\s)*[)]{0,1}[ ]{0,1}[.]*', text):
-        return True
-    else:
-        return False
+    def __init__(self):
+        """Initialize internal data structure"""
+        self.taxon_tree_dict = dict()
+        self.previousLineWasSpecies = False
+        self.previousLineWasGenus = False
+        self.previousLineWasFamily = False
 
+    def parsetable(self, ocrtext):
+        """Parse table content
 
-def isSubFamilyName(text):
-    """Return true if text has the format of a super-genus name.
+            ocrtext: list of lists of strings to be parsed
+            Return df, taxon_tree: A Pandas dataframe with parsed data and the current taxon_tree dictionary containing
+                                   the state of the parser.
+        """
+        df = empty_dataframe()
 
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('^\w+inae', text):
-        return True
-    else:
-        return False
-def parsetable(ocrtext, taxon_tree):
-    """Parse table content
+        # Loop over lines in ocrtext
+        for line in ocrtext:
+            linetext = ' '.join(line)
+            if isSpeciesName(linetext):
+                # print("Species: " + linetext)
+                self.previousLineWasSpecies = True
 
-        ocrtext: list of lists of strings to be parsed
-        taxon_tree: Dictionary containing the taxonomic levels and currently read values
-        Return df, taxon_tree: A Pandas dataframe with parsed data and the current taxon_tree dictionary containing
-                               the state of the parser.
-    """
+                # Strip species name of leading and trailing characters
+                species = cleanPostfix(cleanPrefix(' '.join(line)))
 
-    df = empty_dataframe()
-    lastLineSpecies = False
-    previousLineWasFamily = False
+                #  If isSpeciesName then reuse fields from taxon_tree, but check if exists
+                level1 = ""
+                if "Sub-Order" in self.taxon_tree_dict:
+                    level1 = self.taxon_tree_dict["Sub-Order"]
 
-    # Loop over lines in ocrtext
-    for line in ocrtext:
-        linetext = ' '.join(line)
-        if isSpeciesName(linetext):
-            # print("Species: " + linetext)
-            lastLineSpecies = True
-            if len(line) <= 4:
-                species = ' '.join(line[1:])
+                level2 = ""
+                if "Super-Family" in self.taxon_tree_dict:
+                    level2 = self.taxon_tree_dict["Super-Family"]
+
+                level3 = ""
+                if "Family" in self.taxon_tree_dict:
+                    level3 = self.taxon_tree_dict["Family"]
+
+                level4 = ""
+                if "Sub-Family" in self.taxon_tree_dict:
+                    level4 = self.taxon_tree_dict["Sub-Family"]
+
+                level5 = ""
+                if "Genus" in self.taxon_tree_dict:
+                    level5 = self.taxon_tree_dict["Genus"]
+
+                record = pd.DataFrame({
+                            "Sub-Order": [level1],
+                            "Super-Family": [level2],
+                            "Family": [level3],
+                            "Sub-Family": [level4],
+                            "Genus": [level5],
+                            "Species": [species]
+                })
+                df = pd.concat([df, record], axis=0, ignore_index=True)
             else:
-                species = ' '.join(line[1:-1]) # TODO: Does this always work? No - to fix
-            #  If isSpeciesName then reuse fields from taxon_tree, but check if exists
-            #  Else reset taxon_tree = dict() and read other fields in order
+                #  Else reset taxon_tree = dict() and read other fields in order
 
-            level1 = ""
-            if "Sub-Order" in taxon_tree:
-                level1 = taxon_tree["Sub-Order"]
+                # Reset taxon_tree dictionary
+                if self.previousLineWasSpecies:
+                    self.previousLineWasSpecies = False
+                    if "Genus" in self.taxon_tree_dict:
+                        self.taxon_tree_dict.pop("Genus")
+                    if isSubFamilyName(linetext) and ("Sub-Family" in self.taxon_tree_dict):
+                        self.taxon_tree_dict.pop("Sub-Family")
+                    elif isFamilyName(linetext) and ("Family" in self.taxon_tree_dict):
+                        if "Sub-Family" in self.taxon_tree_dict:
+                            self.taxon_tree_dict.pop("Sub-Family")
+                        self.taxon_tree_dict.pop("Family")
+                    elif isSuperFamilyName(linetext) and ("Super-Family" in self.taxon_tree_dict):
+                        if "Sub-Family" in self.taxon_tree_dict:
+                            self.taxon_tree_dict.pop("Sub-Family")
+                        if "Family" in self.taxon_tree_dict:
+                            self.taxon_tree_dict.pop("Family")
+                        self.taxon_tree_dict.pop("Super-Family")
+                    elif isSubOrder(linetext) and ("Sub-Order" in self.taxon_tree_dict):
+                        self.taxon_tree_dict = dict()
 
-            level2 = ""
-            if "Super-Family" in taxon_tree:
-                level2 = taxon_tree["Super-Family"]
+                # Add next line to appropriate field
+                readingDoubleLineFamilyName = False
+                if self.previousLineWasFamily: # Handle 2-lines Family names
+                    self.previousLineWasFamily = False
+                    if isFamilyAuthorName(linetext) and ("Family" in self.taxon_tree_dict):
+                        self.taxon_tree_dict["Family"] = self.taxon_tree_dict["Family"] + " " + linetext
+                        readingDoubleLineFamilyName = True
+                    else:
+                        readingDoubleLineFamilyName = False
 
-            level3 = ""
-            if "Family" in taxon_tree:
-                level3 = taxon_tree["Family"]
+                readingDoubleLineGenusName = False
+                if self.previousLineWasGenus: # Handle 2-lines Family names
+                    self.previousLineWasGenus = False
+                    if isGenusAuthorName(linetext) and ("Genus" in self.taxon_tree_dict):
+                        self.taxon_tree_dict["Genus"] = self.taxon_tree_dict["Genus"] + " " + linetext
+                        readingDoubleLineGenusName = True
+                    else:
+                        readingDoubleLineGenusName = False
 
-            level4 = ""
-            if "Sub-Family" in taxon_tree:
-                level4 = taxon_tree["Sub-Family"]
+                if isSuperFamilyName(linetext) and not ("Super-Family" in self.taxon_tree_dict):
+                    self.taxon_tree_dict["Super-Family"] = re.sub('\s', '', linetext)
 
-            level5 = ""
-            if "Genus" in taxon_tree:
-                level5 = taxon_tree["Genus"]
+                elif isSubOrder(linetext) and not ("Sub-Order" in self.taxon_tree_dict):
+                    # Important that this comes after Super-Family due to name checker
+                    self.taxon_tree_dict["Sub-Order"] = linetext
 
-            record = pd.DataFrame({
-                        "Sub-Order": [level1],
-                        "Super-Family": [level2],
-                        "Family": [level3],
-                        "Sub-Family": [level4],
-                        "Genus": [level5],
-                        "Species": [species]
-            })
-            df = pd.concat([df, record], axis=0, ignore_index=True)
-        else:
-            # Reset taxon_tree dictionary
-            if lastLineSpecies:
-                lastLineSpecies = False
-                if "Genus" in taxon_tree:
-                    taxon_tree.pop("Genus")
-                if isSubFamilyName(linetext) and ("Sub-Family" in taxon_tree):
-                    taxon_tree.pop("Sub-Family")
-                elif isFamilyName(linetext) and ("Family" in taxon_tree):
-                    if "Sub-Family" in taxon_tree:
-                        taxon_tree.pop("Sub-Family")
-                    taxon_tree.pop("Family")
-                elif isSuperFamilyName(linetext) and ("Super-Family" in taxon_tree):
-                    if "Sub-Family" in taxon_tree:
-                        taxon_tree.pop("Sub-Family")
-                    if "Family" in taxon_tree:
-                        taxon_tree.pop("Family")
-                    taxon_tree.pop("Super-Family")
-                elif isSubOrder(linetext) and ("Sub-Order" in taxon_tree):
-                    taxon_tree = dict()
+                elif isFamilyName(linetext) and not ("Family" in self.taxon_tree_dict):
+                    self.taxon_tree_dict["Family"] = cleanPostfix(linetext)
+                    self.previousLineWasFamily = True
 
-            # Add next line to appropriate field
-            if previousLineWasFamily: # Handle 2-lines Family names
-                previousLineWasFamily = False
-                if isAuthorName(linetext) and ("Family" in taxon_tree):
-                    taxon_tree["Family"] = taxon_tree["Family"] + " " + linetext
+                elif isSubFamilyName(linetext) and not ("Sub-Family" in self.taxon_tree_dict):
+                    self.taxon_tree_dict["Sub-Family"] = linetext
 
-            elif isSuperFamilyName(linetext) and not ("Super-Family" in taxon_tree):
-                taxon_tree["Super-Family"] = linetext
+                elif isGenusName(linetext) and not ("Genus" in self.taxon_tree_dict):
+                    self.taxon_tree_dict["Genus"] = linetext
+                    self.previousLineWasGenus = True
 
-            elif isSubOrder(linetext) and not ("Sub-Order" in taxon_tree):
-                # Important that this comes after Super-Family due to name checker
-                taxon_tree["Sub-Order"] = linetext
+                else:
+                    if not (readingDoubleLineFamilyName or readingDoubleLineGenusName):
+                        print("Line not processed = '" + linetext + "'")
 
-            elif isFamilyName(linetext) and not ("Family" in taxon_tree):
-                taxon_tree["Family"] = linetext
-                previousLineWasFamily = True
+        return df
 
-            elif isSubFamilyName(linetext) and not ("Sub-Family" in taxon_tree):
-                taxon_tree["Sub-Family"] = linetext
 
-            elif not ("Genus" in taxon_tree):
-                taxon_tree["Genus"] = linetext
 
-    return df, taxon_tree
 
 def process_image(img, no_pages, args, ocrreader, master_table, taxon_tree):
     """Parse one image and create a row in the master_table"""
@@ -258,7 +312,7 @@ def process_image(img, no_pages, args, ocrreader, master_table, taxon_tree):
         for i in range(len(ocrtext)):
             print(ocrtext[i])
 
-    df, taxon_tree = parsetable(ocrtext, taxon_tree)
+    df = taxon_tree.parsetable(ocrtext)
 
     # Add to master table
     master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
@@ -275,9 +329,9 @@ def main():
                     help="path to tesseract executable")
     ap.add_argument("-i", "--image", required=True, action="extend", nargs="+", type=str,
                     help="file name for and path to input image")
-    ap.add_argument("-o", "--output", required=False, default="../output",
+    ap.add_argument("-o", "--output", required=False, default="../output/output.xlsx",
                     help="path and filename for Excel spreadsheet to write result to.")
-    ap.add_argument("-l", "--language", required=False, default="dan+eng",
+    ap.add_argument("-l", "--language", required=False, default="deu",
                     help="language that tesseract uses - depends on installed tesseract language packages")
     ap.add_argument("-r", "--resolution", required=False, default=600, type=int,
                     help="Set resolution in DPI of scanned images - used for rendering pdf pages so only relevant for PDF files")
@@ -293,7 +347,8 @@ def main():
     ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--psm 6 -c preserve_interword_spaces=1 --dpi ' + str(args["resolution"]))
 
     master_table = empty_dataframe()
-    taxon_tree = dict() # Initialize with an empty dictionary
+    #taxon_tree = dict() # Initialize with an empty dictionary representing the taxon tree
+    taxon_tree = TaxonTreeParser()
 
     # Loop over a directory of images
     no_img = 0  # Count number of images
@@ -324,7 +379,7 @@ def main():
 
 
     # Write Excel sheet to disk
-    master_table.to_excel(PurePath(args["output"], "table.xlsx").as_posix(), index=False)
+    master_table.to_excel(PurePath(args["output"]).as_posix(), index=False)
 
     # If verbose mode then show all opened figures
     if args["verbose"]:

@@ -29,7 +29,7 @@ def checkfilepath(filepath):
     where x is an integer
 
     filepath: A pathlib.Path object pointing to the file path to be checked
-    Return: A pathlib.Path object pointing to the file path possible with an extra suffix
+    Return: A pathlib.Path object pointing to the file path, possibly with an extra suffix
     """
     extension = 2
     while filepath.exists():
