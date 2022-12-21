@@ -22,8 +22,10 @@ limitations under the License.
 # import sys
 import argparse
 import logging
+import copy
 from skimage.io import imread, imsave
 from skimage.util import img_as_ubyte
+from skimage.color import rgb2hsv
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
@@ -72,6 +74,21 @@ def empty_dataframe():
     return record
 
 
+def empty_back_columns(rows):
+    record = pd.DataFrame({
+        "Notes_back": ["" for x in range(rows)],
+        "Attachment_back": ["" for x in range(rows)]
+    })
+    return record
+
+def empty_back_dataframe():
+    record = pd.DataFrame({
+        "Alt Cat Number": [],
+        "Notes_back": [],
+        "Attachment_back": []
+    })
+    return record
+
 def islocality(text):
     """Return true if text has the locality format used by Bøggild.
        Assume the locality text starts with 'D,'
@@ -100,7 +117,7 @@ def isauthor(text):
 
 
 def parsefronttext(ocrtext):
-    """Parses the transcribed text from a paper card into appropriate data fields.
+    """Parses the transcribed text from the front of a paper card into appropriate data fields.
 
        ocrtext: A list of lists of strings - one for each line on the paper card.
        Return record: Returns a Pandas data frame with the parsed transcribed data.
@@ -204,6 +221,23 @@ def parsefronttext(ocrtext):
     return record
 
 
+def parsebacktext(ocrtext):
+    """Parses the transcribed text from the back of a paper card into a notes data field.
+
+       ocrtext: A list of lists of strings - one for each line on the paper card.
+       Return record: Returns a Pandas data frame with the parsed transcribed data.
+    """
+    text = ""
+    for line in ocrtext:
+        text += ' '.join(line) + "\n"
+
+    record = pd.DataFrame({
+        "Alt Cat Number": [""],
+        "Notes_back": [text],
+        "Attachment_back": [""]
+    })
+    return record
+
 def find_red_line_orientation(labelID, label_img, segMask):
     """Finds the thick red line at the top of the card and estimate card orientation from this line.
 
@@ -249,8 +283,6 @@ def resample_label_from_line(img, label_img, segMask):
     # Loop through all labels ignoring the background segment
     for prop in props:
         label_id = prop.label
-        #orientation = prop.orientation
-        orientation = find_red_line_orientation(label_id, label_img, segMask)
         centroid = prop.centroid
         axis_minor_length = prop.axis_minor_length
         axis_major_length = prop.axis_major_length
@@ -260,6 +292,9 @@ def resample_label_from_line(img, label_img, segMask):
         # Use area and minor/major axis length to check if aspect ratio and aread of region is reasonable
         #  otherwise discard
         if (axis_minor_length / axis_major_length < 0.8) and (area > 1000):
+            # Compute orientation
+            orientation = find_red_line_orientation(label_id, label_img, segMask)
+
             # Convert centroid from (row,col) to (x,y) representation
             center = -np.array([centroid[1], centroid[0]], dtype=float)
 
@@ -299,6 +334,35 @@ def resample_label_from_line(img, label_img, segMask):
     return lst_resampled_labels
 
 
+def estimateBackgroundColor(img, width=200, height=200):
+    """Compute an estimate of the background color by averaging pixel values in a rectangle in the upper
+       left corner of the image
+
+        img: Image the process
+        width, height: Sampling rectangle size in pixels
+        Return: A 3-vector as a numpy array with shape (3,) containing the average Hue-Saturation-Value in the
+                rectangle
+    """
+    mean_rgb = np.mean(img[0:height, 0:width,:], axis=(0,1))
+    return rgb2hsv(mean_rgb)
+
+def findClosestLabel(label_data, previous_lst_labels):
+    """Find the label closest to label_data in the provided list
+
+        label_data: Label dictionary to find a match for
+        previous_lst_labels: List of label dictionaries to compare to
+        Return: The Alt Cat Number from the matching label dictionary. Returns empty string if no match.
+    """
+    shortest_cat_number = ""
+    shortest_dist = 10**64
+    for previous_label_data in previous_lst_labels:
+        dist = np.linalg.norm(np.array(label_data["centroid"]) - np.array(previous_label_data["centroid"]))
+        if dist < shortest_dist:
+            shortest_dist = dist
+            shortest_cat_number = previous_label_data["Alt Cat Number"]
+
+    return shortest_cat_number
+
 
 def main():
     """The main function of this script."""
@@ -309,7 +373,7 @@ def main():
     ap.add_argument("-i", "--image", required=True, action="extend", nargs="+", type=str,
                     help="file name for and path to input image")
     ap.add_argument("-o", "--output", required=False, default="../output",
-                    help="path and filename for Excel spreadsheet to write result to.")
+                    help="path to write results in the form of Excel spreadsheet and individual label images.")
     ap.add_argument("-l", "--language", required=False, default="dan+eng",
                     help="language that tesseract uses - depends on installed tesseract language packages")
     ap.add_argument("-r", "--resolution", required=False, default=400, type=int,
@@ -333,7 +397,13 @@ def main():
     # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 2')
     # ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
 
+    # Initialize variables
     master_table = empty_dataframe()
+    lst_resampled_labels = []
+    previous_lst_resampled_labels = []
+    previous_image_was_front = False
+    front_table = None
+    image_table = empty_dataframe()
 
     # Loop over a directory of images
     for imgfilename in args["image"]:
@@ -341,16 +411,30 @@ def main():
         print("Transcribing " + imgfilename)
         img = imread(imgfilename)
 
-        # TODO: handle front (red) and back (blue)
-        # TODO: Detect background color and perform different processing depending on this
-        #segMask = labeldetect.color_segment_labels(img) # Red background
-        segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.7)) # Light blue background
+        # Estimate background color and perform different processing depending on this
+        mean_hsv = estimateBackgroundColor(img)
+        backgroundIsBlue = mean_hsv[0] > 0.5
+        if backgroundIsBlue: # Blue background
+            print("Blue background")
+            segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.7))  # Light blue background
+        else: # Red background
+            print("Red background")
+            segMask = labeldetect.color_segment_labels(img) # Red background
+
+        # Find labels by color segmentation
         segMaskImproved = labeldetect.improve_binary_mask(segMask)
         label_img, num_labels = labeldetect.find_labels(segMaskImproved)
 
-        # TODO: Improve orientation esitmation by finding the red line
-        #lst_resampled_labels = labeldetect.resample_label(img, label_img)
-        lst_resampled_labels = resample_label_from_line(img, label_img, segMask)
+        # Improve orientation estimation by finding the red line
+        if backgroundIsBlue:
+            lineMask = labeldetect.color_segment_labels(img) # Segment red lines on labels
+            previous_lst_resampled_labels = copy.deepcopy(lst_resampled_labels) # Keep for later label location look-up
+        else:
+            # For red background, reuse the initial segMask
+            lineMask = segMask
+
+        # Segment individual labels and rotate appropriately
+        lst_resampled_labels = resample_label_from_line(img, label_img, lineMask)
 
         if args["verbose"]:
             plt.figure()
@@ -360,6 +444,11 @@ def main():
             plt.figure()
             plt.imshow(segMask)
             plt.title("segMask")
+
+            if backgroundIsBlue:
+                plt.figure()
+                plt.imshow(lineMask)
+                plt.title("lineMask")
 
             plt.figure()
             plt.imshow(label_img)
@@ -374,10 +463,28 @@ def main():
             # return  # TODO: Maybe use exit with a non-zero exit code (for later use in shell scripts)
 
 
+        if backgroundIsBlue:
+            if previous_image_was_front:
+                front_table = image_table.copy()
+            else:
+                front_table = empty_dataframe()
+
+            image_table = empty_back_dataframe()
+        else:
+            if previous_image_was_front:
+                # Add empty backside columns to table
+                image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
+                # Add to master table
+                master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
+                #master_table = pd.concat([master_table, image_table], axis=0)
+
+            image_table = empty_dataframe()
+
         for label_data in lst_resampled_labels:
             if args["verbose"]:
                 print("")
-                print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation']) + " coord " + str(label_data['centroid']))
+                print("ID " + str(label_data["label_id"]) + " orientation " + str(label_data['orientation'])
+                      + " coord " + str(label_data['centroid']))
 
             img_label = img_as_ubyte(label_data['image'])
             ocrreader.read_image(img_label)
@@ -388,14 +495,27 @@ def main():
                 for i in range(len(ocrtext)):
                     print(ocrtext[i])
 
-            df = parsefronttext(ocrtext)
-
+            if backgroundIsBlue:
+                df = parsebacktext(ocrtext)
+                # Figure out which Alt Cat Number to update with background info
+                # Add Alt Cat Number to data record
+                foundAltCatNumber = findClosestLabel(label_data, previous_lst_resampled_labels)
+                if args["verbose"]:
+                    print("Closest Alt Cat Number is " + foundAltCatNumber)
+                df["Alt Cat Number"].update(pd.Series([foundAltCatNumber], index=[0]))
+                suffix = "_back"
+            else:
+                df = parsefronttext(ocrtext)
+                # Save the alternative catalogue number for back processing
+                # Assumes that a Python list contains references
+                label_data["Alt Cat Number"] = df["Alt Cat Number"][0]
+                suffix = ""
 
             #  In case of no Alt Cat Number just pick a unique file name
             if df["Alt Cat Number"][0] == "":
-                outfilename = Path(imgfilename).stem + "_labelID" + str(label_data["label_id"]) + ".tif"
+                outfilename = Path(imgfilename).stem + "_labelID" + str(label_data["label_id"]) + suffix + ".tif"
             else:
-                outfilename = df["Alt Cat Number"][0] + ".tif"
+                outfilename = df["Alt Cat Number"][0] + suffix + ".tif"
 
             # Check that filename is unique otherwise create an extension of it to make unique
             outpath = Path(args["output"], outfilename)
@@ -405,10 +525,14 @@ def main():
             # Save image
             imsave(str(outpath), img_label, check_contrast=False, plugin='pil', compression="tiff_lzw",
                    resolution_unit=2, resolution=400)
-            df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+            # TODO: Add to Attachment record to handle front and back label images
+            if backgroundIsBlue:
+                df["Attachment_back"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+            else:
+                df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
 
-            # Add to master table
-            master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
+            # Add to image table
+            image_table = pd.concat([image_table, df], axis=0, ignore_index=True)
 
             # ocrreader.visualize_boxes()
 
@@ -417,12 +541,57 @@ def main():
                 plt.imshow(label_data['image'])
                 plt.title("ID " + str(label_data["label_id"]))
 
+
+        if backgroundIsBlue:
+            # Merge to previous image table
+            image_table = pd.merge(front_table[["Catalogue Number",
+                                                "Alt Cat Number",
+                                                "Publish",
+                                                "Count",
+                                                "Other Remarks",
+                                                "Order",
+                                                "Family",
+                                                "Genus1",
+                                                "Species1",
+                                                "Author name",
+                                                "Scientific name",
+                                                "GBIF checked scientific name",
+                                                "Determiner First Name",
+                                                "Determiner Last Name",
+                                                "Country",
+                                                "Locality",
+                                                "OCR Start Date",
+                                                "Start Date",
+                                                "Collector First Name",
+                                                "Collector Last Name",
+                                                "Attachment"]], image_table, how='left', on="Alt Cat Number")
+
+            # Add to master table
+            master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
+
+            previous_image_was_front = False
+        else:
+            if previous_image_was_front:
+                # Add empty backside columns to table
+                image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
+
+                # Add to master table
+                master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
+
+            previous_image_was_front = True
+
+        # Write Excel sheet to disk
+        master_table.to_excel(str(Path(args["output"], "temp.xlsx")), index=False)
+
     if args["verbose"]:
         plt.show()
 
-    # Write Excel sheet to disk
-    master_table.to_excel(str(Path(args["output"], "test.xlsx")), index=False)
+    if previous_image_was_front:
+        # Add to master table
+        master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
 
+    # Write Excel sheet to disk
+    master_table.to_excel(str(Path(args["output"], "spidercards.xlsx")), index=False)
 
 if __name__ == '__main__':
     main()
