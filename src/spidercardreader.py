@@ -575,13 +575,8 @@ def main():
                 # Add empty backside columns to table
                 image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
 
-                # Add to master table
-                master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
-
             previous_image_was_front = True
 
-        # Write Excel sheet to disk
-        master_table.to_excel(str(Path(args["output"], "temp.xlsx")), index=False)
 
     if args["verbose"]:
         plt.show()
