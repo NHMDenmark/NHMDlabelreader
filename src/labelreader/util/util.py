@@ -120,13 +120,22 @@ def isromandate(text):
         # Split into Day, Month, Year parts
         parts = re.split(r"[.,]", text)
         if len(parts) >= 3:
-            day = int(parts[0])
+            # Parse day
+            try:
+                day = int(parts[0])
+            except ValueError:
+                return False # Parsing integer day failed
 
+            # Parse month
             month = roman2int(parts[1])
             if month == None:
                 return False
 
-            year = int(parts[2])
+            # Parse year
+            try:
+                year = int(parts[2])
+            except ValueError:
+                return False # Parsing integer year failed
 
             # Check day
             retval = (day >= 1 and day <= 31)

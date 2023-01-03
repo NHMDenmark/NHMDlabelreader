@@ -125,6 +125,10 @@ def parsefronttext(ocrtext):
 
     taxonchecker = gbiftaxonchecker.GBIFTaxonChecker()
 
+    if len(ocrtext) == 0:
+        # If ocrtext is empty then stop here!
+        return empty_dataframe()
+
     # Skip any beginning blank lines
     line_idx = 0
     for idx in range(0, len(ocrtext)):
@@ -250,16 +254,16 @@ def find_red_line_orientation(labelID, label_img, segMask):
     line_mask_improved = labeldetect.improve_binary_mask(line_mask, radius=1) # Remove spurious outlier pixels
     line_idx = np.transpose(np.nonzero(line_mask_improved))  # Nx2 array of line pixel indices
 
-    # fit a line by linear least squares regression
-    line_fit = linregress(line_idx[:,0], line_idx[:,1])
+    if line_idx.shape[0] > 0:
+        # fit a line by linear least squares regression
+        line_fit = linregress(line_idx[:,0], line_idx[:,1])
 
-    # Compute orientation of the line
-    #point1 = np.array([0.0, line_fit.intercept], dtype=float)
-    #point2 = np.array([1.0, line_fit.slope + line_fit.intercept], dtype=float)
-    # vec = point2-point1 == , so no need to compute it
-    vec = np.array([1.0, line_fit.slope], dtype=float)
-    vec = vec / np.linalg.norm(vec, ord=2)  # Normalize to unit vector
-    return np.math.atan2(vec[1], vec[0]) # Estimate orientation with a sign
+        # Compute orientation of the line
+        vec = np.array([1.0, line_fit.slope], dtype=float)
+        vec = vec / np.linalg.norm(vec, ord=2)  # Normalize to unit vector
+        return np.math.atan2(vec[1], vec[0]) # Estimate orientation with a sign
+    else:
+        return 0.0
 
 
 def resample_label_from_line(img, label_img, segMask):
@@ -289,9 +293,9 @@ def resample_label_from_line(img, label_img, segMask):
         bbox = prop.bbox
         area = prop.area
 
-        # Use area and minor/major axis length to check if aspect ratio and aread of region is reasonable
+        # Use area and minor/major axis length to check if aspect ratio and area of region is reasonable
         #  otherwise discard
-        if (axis_minor_length / axis_major_length < 0.8) and (area > 1000):
+        if (axis_minor_length / axis_major_length < 0.8) and (area > 30000):
             # Compute orientation
             orientation = find_red_line_orientation(label_id, label_img, segMask)
 
