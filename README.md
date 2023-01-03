@@ -1,7 +1,7 @@
 # Labels reader
-This project aims to provide automated reading of natural history labels such as Herbarium labels.
+This project aims to provide automated reading of natural history labels such as Herbarium labels and archive cards.
 
-Python scripts and ideas for automated reading of machine typed labels (not yet handwritten labels) and Data Matrix codes or QR codes.
+The project includes Python scripts and ideas for automated reading of machine typed labels (not yet for handwritten labels) and Data Matrix codes or QR codes.
 
 ## Requirements
 The following must be installed on the system. On MacOS I install via MacPorts.
@@ -13,9 +13,9 @@ zbar
 libdmtx
 ImageMagick
 ```
-You also need to have an installation of ImageMagick library which seems to only work on UNIX/Linux/MacOS.
+You also need to have an installation of the ImageMagick library which seems to only work on UNIX/Linux/MacOS.
 
-Create virtual environment
+Create a virtual environment
 ```sh
 python3 -m venv venv
 ```
@@ -59,3 +59,14 @@ To upload to PyPI follow these [instructions](https://packaging.python.org/en/la
 
 ## Documentation
 Additional documentation can be found in [docs](https://github.com/NHMDenmark/NHMDlabelreader/tree/main/docs).
+
+### spidercardreader
+This script parses archive cards from the Ole Bøggild collection of Danish spiders.
+
+### butterflyatlasreader
+This script parses a table of taxa from the butterfly atlas book.
+
+### herbariumcardreader
+This script can parse taxonomic and locality information from herbarium 
+archive cards.
+
