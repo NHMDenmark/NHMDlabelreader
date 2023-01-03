@@ -63,6 +63,7 @@ def empty_dataframe():
         "GBIF checked scientific name": [],
         "Determiner First Name": [],
         "Determiner Last Name": [],
+        "Determination Date": [],
         "Country": [],
         "Locality": [],
         "OCR Start Date": [],
@@ -115,6 +116,30 @@ def isauthor(text):
         return False
 
 
+def iscatnumber(text):
+    """Return true if text is a catalog number.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^[.]?\d{6}', text):
+        return True
+    else:
+        return False
+
+
+def isdettext(text):
+    """Return true if text is 'Det' or 'Det.'.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^Det[.]?', text):
+        return True
+    else:
+        return False
+
+
 
 def parsefronttext(ocrtext):
     """Parses the transcribed text from the front of a paper card into appropriate data fields.
@@ -139,8 +164,10 @@ def parsefronttext(ocrtext):
     # Parse first real line
     word_idx = 0
     alt_cat_number = ""
-    if ocrtext[line_idx][word_idx].isdigit():
-        alt_cat_number = ocrtext[line_idx][word_idx]
+    #if ocrtext[line_idx][word_idx].isdigit():
+    if iscatnumber(ocrtext[line_idx][word_idx]):
+        res = re.search(r"\d{6}", ocrtext[line_idx][word_idx])
+        alt_cat_number = res.string[res.start():res.end()]
         word_idx += 1
 
     genus = ""
@@ -167,6 +194,7 @@ def parsefronttext(ocrtext):
 
     # Initialize variables
     ocrdatetext = ""
+    ocrdetdatetext = ""
     country = "Denmark"
     locality = ""
     other = ""
@@ -174,8 +202,14 @@ def parsefronttext(ocrtext):
     # Parse the remaining lines
     for idx in range(line_idx, len(ocrtext)):
         joined_line = ' '.join(ocrtext[idx])
-        if isromandate(joined_line):
-            ocrdatetext = joined_line
+        if isromandate(ocrtext[idx][0]):
+            if len(ocrtext[idx]) == 1:
+                ocrdatetext = joined_line
+            else:
+                ocrdatetext = ocrtext[idx][0]
+                if len(ocrtext[idx]) >= 3:
+                    if isdettext(ocrtext[idx][1]):
+                        ocrdetdatetext = ocrtext[idx][2]
         elif islocality(joined_line):
             # Pass out country
             # locality = ' '.join(ocrtext[idx][1:])
@@ -213,6 +247,7 @@ def parsefronttext(ocrtext):
         "GBIF checked scientific name": [checked_gbif_taxonname],
         "Determiner First Name": ["Ole"],
         "Determiner Last Name": ["Bøggild"],
+        "Determination Date": [ocrdetdatetext],
         "Country": [country],
         "Locality": [locality],
         "OCR Start Date": [ocrdatetext],
@@ -562,6 +597,7 @@ def main():
                                                 "GBIF checked scientific name",
                                                 "Determiner First Name",
                                                 "Determiner Last Name",
+                                                "Determination Date",
                                                 "Country",
                                                 "Locality",
                                                 "OCR Start Date",
