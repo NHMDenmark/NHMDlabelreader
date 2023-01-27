@@ -25,3 +25,4 @@ limitations under the License.
 # DAGI (https://dataforsyningen.dk/data/3559) and https://datafordeler.dk/dataoversigt/danske-stednavne/danske-stednavne/
 #
 # Example: https://api.dataforsyningen.dk/stednavne2?q=Kl%C3%B8vermarken
+# https://api.dataforsyningen.dk/stednavne2?q=Vejrholt Mose
