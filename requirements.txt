@@ -11,3 +11,4 @@ Wand>=0.6.9
 thefuzz==0.19.0
 python-Levenshtein==0.12.2
 pygbif>=0.6.1
+lark>=1.1.5
