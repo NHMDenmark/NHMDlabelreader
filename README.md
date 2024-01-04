@@ -1,3 +1,5 @@
+[![Python package](https://github.com/NHMDenmark/NHMDlabelreader/actions/workflows/python-package.yml/badge.svg)](https://github.com/NHMDenmark/NHMDlabelreader/actions/workflows/python-package.yml)
+
 # Labels reader
 This project aims to provide automated reading of natural history labels such as Herbarium labels and archive cards.
 
