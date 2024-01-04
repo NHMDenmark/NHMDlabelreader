@@ -11,11 +11,9 @@ The following must be installed on the system. On MacOS I install via MacPorts.
 tesseract
 tesseract-dan
 tesseract-eng
-zbar
-libdmtx
-ImageMagick
+tesseract-deu
+tesseract-lat
 ```
-You also need to have an installation of the ImageMagick library which seems to only work on UNIX/Linux/MacOS.
 
 Create a virtual environment
 ```sh
@@ -58,6 +56,10 @@ For more instructions on how to configure setup.cfg, see the [setuptools quickst
 
 To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 
+### Github actions
+Currently there are two github actions workflow that both need to be
+activated interactively in the repository on github.com.
+For more advanced workflows see Ole Engstrøms [IKPLS](https://github.com/Sm00thix/IKPLS/tree/main) repository 
 
 ## Documentation
 Additional documentation can be found in [docs](https://github.com/NHMDenmark/NHMDlabelreader/tree/main/docs).
