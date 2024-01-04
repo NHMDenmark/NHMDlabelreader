@@ -22,9 +22,10 @@ limitations under the License.
 import argparse
 import cv2
 import pytesseract
-from pyzbar import pyzbar
-from pyzbar.pyzbar import ZBarSymbol
-import pylibdmtx.pylibdmtx as dmtx 
+import zxingcpp
+#from pyzbar import pyzbar
+#from pyzbar.pyzbar import ZBarSymbol
+#import pylibdmtx.pylibdmtx as dmtx
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
@@ -56,7 +57,8 @@ if args["codeformat"] == 'qr':
     # pyzbar is developed by NHM London, https://github.com/NaturalHistoryMuseum/pyzbar
 
     height, width = img_gray.shape[:2]
-    qrcodes = pyzbar.decode((img_gray.tobytes(), width, height), symbols=[ZBarSymbol.QRCODE])
+    #qrcodes = pyzbar.decode((img_gray.tobytes(), width, height), symbols=[ZBarSymbol.QRCODE])
+    qrcodes = zxingcpp.read_barcodes(img_gray, formats=zxingcpp.QRCode)
 
     print("QR codes:\n")
     print(qrcodes)
@@ -65,7 +67,11 @@ elif args["codeformat"] == 'dmtx':
     # Find Data Matrix codes in the image and decode
     # https://github.com/NaturalHistoryMuseum/pylibdmtx/ as maintained by NHM London
     # REALLY SLOW - must detect code area and do a cropping of the image before calling decode
-    dmcodes = dmtx.decode(img_rgb)
+    #dmcodes = dmtx.decode(img_rgb)
+
+    # Much faster
+    dmcodes = zxingcpp.read_barcodes(img, formats=zxingcpp.DataMatrix)
+    #dmcodes = zxingcpp.read_barcode(img)
 
     print("Data Matrix codes:\n")
     print(dmcodes)
