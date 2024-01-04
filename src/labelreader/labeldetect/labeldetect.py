@@ -41,10 +41,12 @@ def color_segment_labels(img, huerange=(0.0, 0.05)):
     """
     img_hsv = rgb2hsv(img)
         
-    # TODO: Maybe check the value channel is large enough to avoid noise from black areas.
+    # TODO: Consider switching to use numpy.where instead - maybe faster? but at least does not lead to boolean result
     low = img_hsv[:, :, 0] >= huerange[0]
     high = img_hsv[:, :, 0] <= huerange[1]
+    # Check the value channel is large enough to avoid noise from black areas.
     notblack = img_hsv[:, :, 2] > 0.01
+    # Check that saturation channel is large enough to not be pure white.
     notwhite = img_hsv[:, :, 1] > 0.01
     
     mask = np.ones(img.shape[0:2], dtype=np.uint8)
