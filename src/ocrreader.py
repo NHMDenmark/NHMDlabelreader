@@ -23,6 +23,7 @@ import argparse
 import cv2
 import pytesseract
 import zxingcpp
+import pprint
 #from pyzbar import pyzbar
 #from pyzbar.pyzbar import ZBarSymbol
 #import pylibdmtx.pylibdmtx as dmtx
@@ -74,7 +75,15 @@ elif args["codeformat"] == 'dmtx':
     #dmcodes = zxingcpp.read_barcode(img)
 
     print("Data Matrix codes:\n")
-    print(dmcodes)
+    for dmcode in dmcodes:
+        print(
+            "Found barcode:"
+            f'\n Text:    "{dmcode.text}"'
+            f"\n Format:   {dmcode.format}"
+            f"\n Content:  {dmcode.content_type}"
+            f"\n Position: {dmcode.position}"
+            f"\n Orientation: {dmcode.orientation}"
+        )
 
 
 # Run it through the OCR engine

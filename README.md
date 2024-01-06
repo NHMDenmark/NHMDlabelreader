@@ -26,6 +26,13 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+The binary wheels in the pypi repository of the current version 2.2.0 of zxing-cpp has a problem and must be
+build from the source code package by
+```sh
+pip uninstall zxing-cpp
+python -m pip install zxing-cpp==2.2.0 --no-binary zxing-cpp
+```
+
 
 ## Development
 
