@@ -6,7 +6,7 @@ This project aims to provide automated reading of natural history labels such as
 The project includes Python scripts and ideas for automated reading of machine typed labels (not yet for handwritten labels) and Data Matrix codes or QR codes.
 
 ## Requirements
-The following must be installed on the system. On MacOS I install via MacPorts.
+The following must be installed on the system. On macOS, I install this via MacPorts.
 ```sh
 tesseract
 tesseract-dan
@@ -26,7 +26,7 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
-The binary wheels in the pypi repository of the current version 2.2.0 of zxing-cpp has a problem and must be
+The binary wheels in the pypi repository of the current version 2.2.0 of [zxing-cpp](https://github.com/zxing-cpp/zxing-cpp) has a problem and must therefore be
 build from the source code package by
 ```sh
 pip uninstall zxing-cpp
