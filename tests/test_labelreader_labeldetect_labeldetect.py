@@ -37,9 +37,6 @@ def makebluetestlabelimg():
     return img
 
 def test_color_segment_labels():
-    # TODO: Use a smaller image for testing than this one
-    #img = imread(str(TESTDATAPATH.joinpath('JPG_400DPI.jpg')))
-
     # Construct a 5 color stripped pattern test image
     red = np.array([1.0, 0.0, 0.0], dtype=float)
     green = np.array([0.0, 1.0, 0.0], dtype=float)
