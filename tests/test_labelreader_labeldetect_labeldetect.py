@@ -104,7 +104,8 @@ def test_find_labels():
 
 def test_resample_label_red():
     # Red background
-    img = imread(str(TESTDATAPATH.joinpath('JPG_400DPI.jpg')))
+    #img = imread(str(TESTDATAPATH.joinpath('JPG_400DPI.jpg')))
+    img = imread(str(TESTDATAPATH.joinpath('redlabels.jpg')))
     segMask = labeldetect.color_segment_labels(img)
     segMask = labeldetect.improve_binary_mask(segMask)
     label_img, num_labels = labeldetect.find_labels(segMask)
@@ -114,7 +115,8 @@ def test_resample_label_red():
 
 def test_resample_label_blue():
     # Blue background
-    img = imread(str(TESTDATAPATH.joinpath('20220601113652717_0002.jpg')))
+    #img = imread(str(TESTDATAPATH.joinpath('20220601113652717_0002.jpg')))
+    img = imread(str(TESTDATAPATH.joinpath('bluelabels.jpg')))
     segMask = labeldetect.color_segment_labels(img, huerange=(0.5, 0.7))
     segMask = labeldetect.improve_binary_mask(segMask)
     label_img, num_labels = labeldetect.find_labels(segMask)
