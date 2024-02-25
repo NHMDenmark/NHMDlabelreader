@@ -22,9 +22,10 @@ limitations under the License.
 from pathlib import Path
 import re
 import logging
+import typing
 
 
-def checkfilepath(filepath):
+def checkfilepath(filepath: str) -> Path:
     """Check if filepath exists and if so create a new path with '.x' added before file suffix,
     where x is an integer
 
@@ -42,7 +43,7 @@ def checkfilepath(filepath):
     return filepath
 
 
-def roman2int(roman):
+def roman2int(roman: str) -> typing.Optional[int]:
     """Convert a roman numeral string into integer.
        Also interprets 1 to I.
 
