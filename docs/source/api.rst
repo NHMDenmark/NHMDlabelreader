@@ -3,6 +3,6 @@ API
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Modules:
 
-    modules/util
+   util
