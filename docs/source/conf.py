@@ -6,9 +6,10 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import os
+import pathlib
 import sys
-sys.path.insert(0, os.path.abspath('../src'))
+sys.path.insert(0, pathlib.Path(__file__).parents[2].joinpath('src').resolve().as_posix())
+
 
 project = 'NHMD Label Reader'
 copyright = '2024, Kim Steenstrup Pedersen, DIKU-SNM, UCPH'
