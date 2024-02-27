@@ -22,15 +22,17 @@ limitations under the License.
 from pathlib import Path
 import re
 import logging
-import typing
+from typing import Optional
 
 
-def checkfilepath(filepath: str) -> Path:
+def checkfilepath(filepath: Path) -> Path:
     """Check if filepath exists and if so create a new path with '.x' added before file suffix,
     where x is an integer
 
-    filepath: A pathlib.Path object pointing to the file path to be checked
-    Return: A pathlib.Path object pointing to the file path, possibly with an extra suffix
+    :param filepath: A pathlib.Path object pointing to the file path to be checked
+    :type filepath: pathlib.Path
+    :return: A pathlib.Path object pointing to the file path, possibly with an extra suffix
+    :rtype: pathlib.Path
     """
     extension = 2
     while filepath.exists():
@@ -43,12 +45,14 @@ def checkfilepath(filepath: str) -> Path:
     return filepath
 
 
-def roman2int(roman: str) -> typing.Optional[int]:
+def roman2int(roman: str) -> Optional[int]:
     """Convert a roman numeral string into integer.
        Also interprets 1 to I.
 
-       roman: String with a roman numeral
-       Return: An integer representation of the roman numeral. If an error occurs during parsing it return None
+       :param roman: String with a roman numeral
+       :type roman: str
+       :return: An integer representation of the roman numeral. If an error occurs during parsing it return None
+       :rtype: int or None
     """
 
     # Check for 4 - 12
@@ -107,13 +111,15 @@ def roman2int(roman: str) -> typing.Optional[int]:
     return number
 
 
-def isromandate(text):
-    """Return true if text has the date format used by Bøggild. That is,
-       assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
+def isromandate(text: str) -> bool:
+    """Return true if text has the date format using month in roman numerals (as used by Bøggild et al).
+       That is, assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
        Allows for common OCR mistake, meaning that if month contains '1' it will be interpreted as 'I'.
 
-        text: String to analyse
-        Return: Boolean
+       :param text: String to analyse
+       :type text: str
+       :return: True if text has the date format using month in roman numerals, False otherwise
+       :rtype: bool
     """
     # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
     # Include a common OCR mistake of reading I as 1 as acceptable.
@@ -155,11 +161,13 @@ def isromandate(text):
 
 
 
-def parseromandate(text):
+def parseromandate(text: str) -> str:
     """Parse a date in the format accepted by isromandate() and return a numerical date in DD-MM-YYYY format.
 
-        text: String to parse
-        Return: A date string in DD-MM-YYYY format or empty string if error occurs
+       :param text: String to parse
+       :type text: str
+       :return: A date string in DD-MM-YYYY format or empty string if error occurs
+       :rtype: str
     """
     # Remove prefix and suffix characters
     res = re.search(r"^\d{1,2}[.,]{1}[IVX1]{1,4}[.,]{1}\d{4}", text)
