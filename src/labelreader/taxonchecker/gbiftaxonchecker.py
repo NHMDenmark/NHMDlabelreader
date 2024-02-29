@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """
+This module implements a taxon name checker by using the GBIF taxon backbone via the GBIF web API
+
+LICENSE
+
 Created on Wed Nov 16 14:42:00 2022
 
 @author: Kim Steenstrup Pedersen, NHMD
@@ -19,11 +23,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from pygbif import species
+from typing import Optional
 
 
 class GBIFTaxonChecker:
-    """This class implements a taxon name checker by using the GBIF taxon backbone via the GBIF web API
-       using PyGBIF.
+    """
+        This class implements a taxon name checker by using the GBIF taxon backbone via the GBIF web API
+        using the PyGBIF package.
     """
 
     def __init__(self):
@@ -31,11 +37,13 @@ class GBIFTaxonChecker:
         pass
 
 
-    def check_full_name(self, querystring):
+    def check_full_name(self, querystring: str) -> Optional[str]:
         """Do a fuzzy match between querystring and GBIF taxon backbone
 
-            querystring: A string containing a full species name (Starting with the Genus name)
-            Returns: None if no match, otherwise the full name closest to querystring
+            :param querystring: A string containing a full species name (Starting with the Genus name)
+            :type querystring: str
+            :return: None if no match, otherwise the full name closest to querystring
+            :rtype: Optional[str]
         """
 
         # TODO: Restrict the search to Danish national checklist? Or make it optional?

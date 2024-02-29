@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """
+The util module contains utility functions for the labelreader package.
+
+LICENSE
+
 Created on Thu Aug 15 19:10:00 2022
 
 @author: Kim Steenstrup Pedersen, NHMD

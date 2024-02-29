@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """
+This module implements a taxon name checker by using a checklist in the form of a Sqlite3 database.
+
+LICENSE
+
 Created on Thu Aug 26 16:49:00 2022
 
 @author: Kim Steenstrup Pedersen, NHMD
@@ -24,20 +28,25 @@ import sqlite3
 from thefuzz import fuzz
 from thefuzz import process
 from pathlib import Path
+from typing import Optional, Tuple
 
 
 class DBTaxonChecker:
-    """This class implements a taxon name checker by using a checklist in the form of a Sqlite3 database.
+    """
+        This class implements a taxon name checker by using a checklist in the form of a Sqlite3 database.
     """
 
-    def __init__(self, dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3")),
-                 institution_code="NHMD",
-                 collection="NHMD Vascular Plants"):
+    def __init__(self, dbfilename: str = str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3")),
+                 institution_code: str = "NHMD",
+                 collection: str = "NHMD Vascular Plants"):
         """Initialize the TaxonChecker.
 
-            dbfilename: Path and filename for the Sqlite3 taxon database
-            institution_code: String with institution acronym. Not in use at the moment.
-            collection: String with collection name.  Not in use at the moment.
+            :param dbfilename: Path and filename for the Sqlite3 taxon database
+            :type dbfilename: str
+            :param institution_code: String with institution acronym. Not in use at the moment.
+            :type institution_code: str
+            :param collection: String with collection name.  Not in use at the moment.
+            :type collection: str
         """
         print("TaxonChecker: Opening connection to " + dbfilename)
         self.dbconnection = sqlite3.connect(dbfilename)
@@ -61,12 +70,15 @@ class DBTaxonChecker:
         self.dbconnection.close()
 
 
-    def check_full_name(self, querystring, score_threshold=90):
+    def check_full_name(self, querystring: str, score_threshold: int = 90) -> Optional[Tuple[str, int, int]]:
         """Do a fuzzy match between querystring and the database column taxonname.fullname
 
-            querystring: The query string
-            score_threshold: Fuzzy matching percentage threshold (default 90)
-            Returns: None if no match, otherwise a tuple of (fullname, score, taxon_id)
+            :param querystring: The query string
+            :type querystring: str
+            :param score_threshold: Fuzzy matching percentage threshold (default 90)
+            :type score_threshold: int
+            :return: None if no match, otherwise a tuple of (fullname, score, taxon_id)
+            :rtype: Optional[Tuple[str, int, int]]
         """
         possibilities = process.extract(querystring, self.fullname, limit=100, scorer=fuzz.ratio)
         res = [possible for possible in possibilities if possible[1] > score_threshold]
@@ -75,12 +87,15 @@ class DBTaxonChecker:
         else:
             return None
 
-    def check_name(self, querystring, score_threshold=90):
+    def check_name(self, querystring: str, score_threshold: int = 90) -> Optional[Tuple[str, int, int]]:
         """Do a fuzzy match between querystring and the database column taxonname.name
 
-            querystring: The query string
-            score_threshold: Fuzzy matching percentage threshold (default 90)
-            Returns: None if no match, otherwise a tuple of (name, score, taxon_id)
+            :param querystring: The query string
+            :type querystring: str
+            :param score_threshold: Fuzzy matching percentage threshold (default 90)
+            :type score_threshold: int
+            :return: None if no match, otherwise a tuple of (name, score, taxon_id)
+            :rtype: Optional[Tuple[str, int, int]]
         """
         possibilities = process.extract(querystring, self.name, limit=100, scorer=fuzz.ratio)
         res = [possible for possible in possibilities if possible[1] > score_threshold]
