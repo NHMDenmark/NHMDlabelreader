@@ -342,7 +342,7 @@ def resample_label_from_line(img, label_img, segMask):
 
         # Use area and minor/major axis length to check if aspect ratio and area of region is reasonable
         #  otherwise discard
-        if (axis_minor_length / axis_major_length < 0.8) and (area > 30000):
+        if (axis_major_length != 0) and (axis_minor_length / axis_major_length < 0.8) and (area > 30000):
             # Compute orientation
             orientation = find_red_line_orientation(label_id, label_img, segMask)
 
