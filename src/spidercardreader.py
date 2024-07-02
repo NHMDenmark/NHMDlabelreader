@@ -620,7 +620,7 @@ def main():
 
             previous_image_was_front = True
 
-        # Write Excel sheet to disk
+        # Write a snapshot as Excel sheet to disk
         master_table.to_excel(str(Path(args["output"], "spidercards.xlsx")), index=False)
 
         image_count+=1
@@ -634,7 +634,7 @@ def main():
         # Add to master table
         master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
 
-    # Write Excel sheet to disk
+    # Write final table to disk as Excel sheet
     master_table.to_excel(str(Path(args["output"], "spidercards.xlsx")), index=False)
 
 if __name__ == '__main__':
