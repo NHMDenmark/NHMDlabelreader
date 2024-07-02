@@ -70,7 +70,8 @@ def empty_dataframe():
         "Start Date": [],
         "Collector First Name": [],
         "Collector Last Name": [],
-        "Attachment": []
+        "Attachment": [],
+        "Original front image": []
     })
     return record
 
@@ -78,7 +79,8 @@ def empty_dataframe():
 def empty_back_columns(rows):
     record = pd.DataFrame({
         "Notes_back": ["" for x in range(rows)],
-        "Attachment_back": ["" for x in range(rows)]
+        "Attachment_back": ["" for x in range(rows)],
+        "Original back image": ["" for x in range(rows)]
     })
     return record
 
@@ -86,7 +88,8 @@ def empty_back_dataframe():
     record = pd.DataFrame({
         "Alt Cat Number": [],
         "Notes_back": [],
-        "Attachment_back": []
+        "Attachment_back": [],
+        "Original back image": []
     })
     return record
 
@@ -254,7 +257,8 @@ def parsefronttext(ocrtext):
         "Start Date": [datetext],
         "Collector First Name": ["Ole"],
         "Collector Last Name": ["Bøggild"],
-        "Attachment": [""]
+        "Attachment": [""],
+        "Original front image": [""]
     })
 
     return record
@@ -273,7 +277,8 @@ def parsebacktext(ocrtext):
     record = pd.DataFrame({
         "Alt Cat Number": [""],
         "Notes_back": [text],
-        "Attachment_back": [""]
+        "Attachment_back": [""],
+        "Original back image": [""]
     })
     return record
 
@@ -296,7 +301,7 @@ def find_red_line_orientation(labelID, label_img, segMask):
         # Compute orientation of the line
         vec = np.array([1.0, line_fit.slope], dtype=float)
         vec = vec / np.linalg.norm(vec, ord=2)  # Normalize to unit vector
-        return np.math.atan2(vec[1], vec[0]) # Estimate orientation with a sign
+        return np.arctan2(vec[1], vec[0]) # Estimate orientation with a sign
     else:
         return 0.0
 
@@ -444,10 +449,12 @@ def main():
     front_table = None
     image_table = empty_dataframe()
 
+    image_count = 0
+
     # Loop over a directory of images
     for imgfilename in args["image"]:
         # Read image with filename
-        print("Transcribing " + imgfilename)
+        print("Transcribing " + Path(imgfilename).name)
         img = imread(imgfilename)
 
         # Estimate background color and perform different processing depending on this
@@ -512,10 +519,11 @@ def main():
         else:
             if previous_image_was_front:
                 # Add empty backside columns to table
-                image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
+                #image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
+
                 # Add to master table
-                master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
-                #master_table = pd.concat([master_table, image_table], axis=0)
+                #master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
+                master_table = pd.concat([master_table, image_table], axis=0)
 
             image_table = empty_dataframe()
 
@@ -541,37 +549,53 @@ def main():
                 foundAltCatNumber = findClosestLabel(label_data, previous_lst_resampled_labels)
                 if args["verbose"]:
                     print("Closest Alt Cat Number is " + foundAltCatNumber)
-                df["Alt Cat Number"].update(pd.Series([foundAltCatNumber], index=[0]))
+
+                df.at[0,"Alt Cat Number"] = foundAltCatNumber
                 suffix = "_back"
             else:
                 df = parsefronttext(ocrtext)
+
+                if args["verbose"]:
+                    print("df.shape = " + str(df.shape))
+
                 # Save the alternative catalogue number for back processing
                 # Assumes that a Python list contains references
-                label_data["Alt Cat Number"] = df["Alt Cat Number"][0]
-                suffix = ""
+                if not df.empty:
+                    label_data["Alt Cat Number"] = df["Alt Cat Number"][0]
+                    suffix = ""
 
-            #  In case of no Alt Cat Number just pick a unique file name
-            if df["Alt Cat Number"][0] == "":
-                outfilename = Path(imgfilename).stem + "_labelID" + str(label_data["label_id"]) + suffix + ".tif"
-            else:
-                outfilename = df["Alt Cat Number"][0] + suffix + ".tif"
+            if not df.empty:
 
-            # Check that filename is unique otherwise create an extension of it to make unique
-            outpath = Path(args["output"], outfilename)
-            outpath = checkfilepath(outpath)
-            outfilename = outpath.name
+                #  In case of no Alt Cat Number just pick a unique file name
+                if df["Alt Cat Number"][0] == "":
+                    outfilename = Path(imgfilename).stem + "_labelID" + str(label_data["label_id"]) + suffix + ".tif"
+                else:
+                    outfilename = df["Alt Cat Number"][0] + suffix + ".tif"
 
-            # Save image
-            imsave(str(outpath), img_label, check_contrast=False, plugin='pil', compression="tiff_lzw",
+                # Check that filename is unique otherwise create an extension of it to make unique
+                outpath = Path(args["output"], outfilename)
+                outpath = checkfilepath(outpath)
+                outfilename = outpath.name
+
+                # Save image
+                imsave(str(outpath), img_label, check_contrast=False, plugin='pil', compression="tiff_lzw",
                    resolution_unit=2, resolution=400)
-            # TODO: Add to Attachment record to handle front and back label images
-            if backgroundIsBlue:
-                df["Attachment_back"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
-            else:
-                df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+                # Add to Attachment and Original image columns to handle front and back label images
+                if backgroundIsBlue:
+                    df.at[0, "Attachment_back"] = outfilename # Add filename to data record
 
-            # Add to image table
-            image_table = pd.concat([image_table, df], axis=0, ignore_index=True)
+                    # Add original image file name to data record
+                    df.at[0, "Original back image"] = Path(imgfilename).name
+                else:
+                    df.at[0, "Attachment"] = outfilename  # Add filename to data record
+
+                    # Add original image file name to data record
+                    df.at[0, "Original front image"] = Path(imgfilename).name
+
+
+
+                # Add to image table
+                image_table = pd.concat([image_table, df], axis=0, ignore_index=True)
 
             # ocrreader.visualize_boxes()
 
@@ -583,39 +607,24 @@ def main():
 
         if backgroundIsBlue:
             # Merge to previous image table
-            image_table = pd.merge(front_table[["Catalogue Number",
-                                                "Alt Cat Number",
-                                                "Publish",
-                                                "Count",
-                                                "Other Remarks",
-                                                "Order",
-                                                "Family",
-                                                "Genus1",
-                                                "Species1",
-                                                "Author name",
-                                                "Scientific name",
-                                                "GBIF checked scientific name",
-                                                "Determiner First Name",
-                                                "Determiner Last Name",
-                                                "Determination Date",
-                                                "Country",
-                                                "Locality",
-                                                "OCR Start Date",
-                                                "Start Date",
-                                                "Collector First Name",
-                                                "Collector Last Name",
-                                                "Attachment"]], image_table, how='left', on="Alt Cat Number")
+            image_table = front_table.join(image_table.set_index("Alt Cat Number"), on="Alt Cat Number", how='left')
 
             # Add to master table
             master_table = pd.concat([master_table, image_table], axis=0, ignore_index=True)
 
             previous_image_was_front = False
         else:
-            if previous_image_was_front:
-                # Add empty backside columns to table
-                image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
+            #if previous_image_was_front:
+            #    # Add empty backside columns to table
+            #    image_table = pd.concat([image_table, empty_back_columns(len(lst_resampled_labels))], axis=1)
 
             previous_image_was_front = True
+
+        # Write Excel sheet to disk
+        master_table.to_excel(str(Path(args["output"], "spidercards.xlsx")), index=False)
+
+        image_count+=1
+        print("Processed " + str(image_count) + " images")
 
 
     if args["verbose"]:
