@@ -48,6 +48,8 @@ from labelreader.util.util import isromandate, parseromandate
 
 
 def empty_dataframe():
+    """Create and return an empty data frame for frontside data.
+    """
     record = pd.DataFrame({
         "Catalogue Number": [],
         "Alt Cat Number": [],
@@ -77,6 +79,9 @@ def empty_dataframe():
 
 
 def empty_back_columns(rows):
+    """Create and return a data frame for backside data field with empty strings
+       and no Alt Cat Number column.
+    """
     record = pd.DataFrame({
         "Notes_back": ["" for x in range(rows)],
         "Attachment_back": ["" for x in range(rows)],
@@ -85,6 +90,8 @@ def empty_back_columns(rows):
     return record
 
 def empty_back_dataframe():
+    """Create and return an empty data frame for backside data.
+    """
     record = pd.DataFrame({
         "Alt Cat Number": [],
         "Notes_back": [],
@@ -542,6 +549,7 @@ def main():
                 for i in range(len(ocrtext)):
                     print(ocrtext[i])
 
+            suffix = ""
             if backgroundIsBlue:
                 df = parsebacktext(ocrtext)
                 # Figure out which Alt Cat Number to update with background info
@@ -562,7 +570,7 @@ def main():
                 # Assumes that a Python list contains references
                 if not df.empty:
                     label_data["Alt Cat Number"] = df["Alt Cat Number"][0]
-                    suffix = ""
+                    #suffix = ""
 
             if not df.empty:
 
