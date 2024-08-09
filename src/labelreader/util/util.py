@@ -200,3 +200,39 @@ def parseromandate(text: str) -> str:
 
     # Return formatted date
     return "%02d" % int(day) + "-" + "%02d" % month + "-" + year
+
+
+def isdettext(text: str) -> bool:
+    """Return true if text is 'Det' or 'Det.' or 'Det.:' or 'Det:'.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^(D|d)et[.]?[:]?', text):
+        return True
+    else:
+        return False
+
+def islegtext(text: str) -> bool:
+    """Return true if text is 'Leg' or 'Leg.' or 'Leg.:' or 'Leg:'.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^(L|l)eg(it|[.])?[:]?', text):
+        return True
+    else:
+        return False
+
+# TODO: Make a test for coll. text
+
+def islegdettext(text: str) -> bool:
+    """Return true if text is 'Leg. et det' and variants.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^(L|l)eg[.]? (et|&) det[.]?[:]?', text):
+        return True
+    else:
+        return False

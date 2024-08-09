@@ -9,4 +9,5 @@ thefuzz == 0.22.1
 python-Levenshtein == 0.25.0
 pygbif >= 0.6.1
 lark >= 1.1.5
+wand
 pytest >= 7.1.2

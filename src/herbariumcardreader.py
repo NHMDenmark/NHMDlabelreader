@@ -21,7 +21,6 @@ limitations under the License.
 
 import argparse
 from skimage.io import imread, imsave
-#from skimage.util import img_as_ubyte
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
@@ -35,9 +34,9 @@ import numpy as np
 # sys.path.append(str(Path(__file__).parent.parent))
 
 from labelreader.ocr import tesseract
-#from labelreader.labeldetect import labeldetect
 from labelreader.util.util import checkfilepath
-from labelreader.taxonchecker import dbtaxonchecker
+from labelreader.taxonchecker import gbiftaxonchecker
+from labelreader.util.util import isromandate, parseromandate, isdettext, islegtext, islegdettext
 
 
 def empty_dataframe():
@@ -46,18 +45,17 @@ def empty_dataframe():
         "Alt Cat Number": [],
         "Publish": [],
         "Other Remarks": [],
-        "Order": [],
         "Family": [],
-        "Genus1": [],
-        "Species1": [],
-        "Determination Remarks": [],
-        "OCR full name": [],
-        "Corrected full name": [],
-        "Fuzzy match percentage": [],
+        "Genus": [],
+        "Species": [],
+        "Author name": [],
+        "Scientific name": [],
+        "GBIF checked scientific name": [],
         "Determiner": [],
         "Collector": [],
         "Country": [],
         "Locality": [],
+        "Number": [],
         "Start Date": [],
         "Attachment": []
     })
@@ -100,20 +98,29 @@ def iscataloguenumber(text):
         return False
 
 def isdate(text):
-    """Return true if text has the date format used by Bøggild.
-       Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
+    """Return true if text has the date format used by NHMD Botany.
+       The format can be any of the normal date formats used in the world as well as roman numeral for month format.
 
         text: String to analyse
         Return: Boolean
     """
-    # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
     # Include a common OCR mistake of reading I as 1 as acceptable.
-    if re.match('\d{1,2}.[IVX1]+.\d{4}', text):
+    if isromandate(text): # Allow for roman numerals format
+        return True
+    elif re.match('\d{1,2}[ .,/]\d{1,2}[ .,/-]\d{2,4}', text): # Allow for day and month numerals format
+        return True
+    elif re.match('(\d{1,2})?[ .,/]?(\w)*[ .,/-]\d{2,4}', text): # Allow for month name
+        return True
+    elif re.match('(\w)+[.]*(\s)*\d{2,4}', text): # Allow for month name and year only
+        return True
+    elif re.match('\d{2,4}[-/]\d{2}', text): # Allow for year range
+        return True
+    elif re.match('\d{4}', text): # Allow for year only
         return True
     else:
         return False
 
-def islocality(text):
+def islocality(text): # TODO: Adjust to the NHMD Botany format
     """Return true if text has the locality format used by Bøggild.
        Assume the locality text starts with 'D,'
 
@@ -126,7 +133,7 @@ def islocality(text):
         return False
 
 
-def isauthor(text):
+def isauthor(text): # TODO: This is too restrictive
     """Return true if text is a taxonomic author.
        Assumes that author is inclosed in parentheses.
 
@@ -149,18 +156,24 @@ def letters_only(text):
     return ''.join([c for c in text if c.isalpha()])
 
 
-def parsetext(ocrtext, checker):
+def parsetext(ocrtext, family, checker):
     """Parses the transcribed text from a paper card into appropriate data fields.
 
        ocrtext: A list of lists of strings - one for each line on the paper card.
+       family: A string with the taxonomic family name of the plant
        checker: A TaxonChecker object
        Return record: Returns a Pandas data frame with the parsed transcribed data.
     """
+
+    # If ocrtext is empty then stop here!
+    if len(ocrtext) == 0:
+        return empty_dataframe()
 
     # Initialize variables
     datetext = ""
     country = ""
     locality = ""
+    loc_number = ""
     other = ""
 
     # Skip any beginning blank lines
@@ -170,23 +183,24 @@ def parsetext(ocrtext, checker):
             line_idx = idx
             break
 
-    # Parse first real line
+    # Parse first real line for catalogue number
     alt_cat_number = ""
     for elem in ocrtext[line_idx]:
         if iscataloguenumber(elem):
             alt_cat_number = elem
 
     # Parse second line
+    # Assume either Taxon name or No. and number
     line_idx += 1 # Next line
     word_idx = 0
 
+    # Check for No. and number
     if len(ocrtext[line_idx]) == 2 and (is_nodot(ocrtext[line_idx][word_idx]) and ocrtext[line_idx][word_idx+1].isdigit()):
-        other+= ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
+        loc_number = ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
         line_idx += 1  # Next line
         word_idx = 0
 
     # Parse taxon line
-    corrected_fullname = ""
     genus = ""
     if len(ocrtext[line_idx]) >= 1:
         genus = ocrtext[line_idx][word_idx].lower().capitalize()
@@ -205,12 +219,12 @@ def parsetext(ocrtext, checker):
 
         word_idx += 1
 
-    det_remarks = ""
+    author_name = ""
     if len(ocrtext[line_idx]) > word_idx:
         # Handle the case with species names containing more than one word
         for idx in range(word_idx, len(ocrtext[line_idx])):
             if isauthor(ocrtext[line_idx][idx]):
-                det_remarks = ' '.join(ocrtext[line_idx][idx:])
+                author_name = ' '.join(ocrtext[line_idx][idx:])
                 break
             else:
                 species += " " + ocrtext[line_idx][idx]
@@ -219,7 +233,7 @@ def parsetext(ocrtext, checker):
     if len(species)==0:
         for idx in range(0, len(ocrtext[line_idx])):
             if isauthor(ocrtext[line_idx][idx]):
-                det_remarks += ' '.join(ocrtext[line_idx][idx:])
+                author_name += ' '.join(ocrtext[line_idx][idx:])
                 break
             else:
                 species += " " + ocrtext[line_idx][idx]
@@ -227,16 +241,31 @@ def parsetext(ocrtext, checker):
         line_idx +=1 # Next line
 
 
+    collector = ""
+    determiner = ""
+
     # Parse the remaining lines
     for idx in range(line_idx, len(ocrtext)):
         joined_line = ' '.join(ocrtext[idx])
-        if isdate(joined_line):
-            datetext = joined_line
+        if joined_line.isspace():
+            continue  # Skip empty lines
+        elif is_nodot_number(joined_line):
+            loc_number = joined_line
+        elif isdate(joined_line):
+            if isromandate(joined_line):
+                datetext = parseromandate(joined_line)
+            else:
+                datetext = joined_line
+        elif islegdettext(joined_line):
+            determiner = joined_line
+            collector = joined_line
+        elif isdettext(joined_line) or re.match('^(D|d)ed[.]?[:]?', joined_line): # Handle typo in Ded.
+            determiner = joined_line
+        elif islegtext(joined_line):
+            collector = joined_line
         elif islocality(joined_line):
             # Pass out country
             locality = ' '.join(ocrtext[idx][1:])
-        elif joined_line.isspace():
-            continue  # Skip empty lines
         else:
             # Add the remaining text to the Other Remarks field
             if len(other) > 0:
@@ -248,31 +277,26 @@ def parsetext(ocrtext, checker):
     genus = letters_only(genus)
 
     # check taxonomic full name
-    ocr_fullname = " ".join([genus, species, det_remarks])
-    res = checker.check_full_name(ocr_fullname)
-    fuzzy_score = 0
-    # print(res)
-    if not isinstance(res, type(None)):
-        corrected_fullname = res[0]
-        fuzzy_score = res[1]
+    ocr_taxonname = " ".join([genus, species, author_name])
+    checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
+
 
     record = pd.DataFrame({
         "Catalogue Number": [""],
         "Alt Cat Number": [alt_cat_number],
         "Publish": [1],
         "Other Remarks": [other],
-        "Order": [""],
-        "Family": ["Acanthaceae"],
-        "Genus1": [genus],
-        "Species1": [species],
-        "Determination Remarks": [det_remarks],
-        "OCR full name": [ocr_fullname],
-        "Corrected full name": [corrected_fullname],
-        "Fuzzy match percentage": [fuzzy_score],
-        "Determiner": [""],
-        "Collector": [""],
+        "Family": [family],
+        "Genus": [genus],
+        "Species": [species],
+        "Author name": [author_name],
+        "Scientific name": [ocr_taxonname],
+        "GBIF checked scientific name": [checked_gbif_taxonname],
+        "Determiner": [determiner],
+        "Collector": [collector],
         "Country": [country],
         "Locality": [locality],
+        "Number": [loc_number],
         "Start Date": [datetext],
         "Attachment": [""]
     })
@@ -294,7 +318,8 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
         for i in range(len(ocrtext)):
             print(ocrtext[i])
 
-    df = parsetext(ocrtext, checker)
+    family = Path(imgfilename).stem # Assume that the family name is the filename
+    df = parsetext(ocrtext, family, checker)
 
     #  In case of no Alt Cat Number just pick a unique random file name
     if df["Alt Cat Number"][0] == "":
@@ -309,7 +334,9 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
 
     imsave(str(outpath), img, check_contrast=False, plugin='pil', compression="tiff_lzw",
            resolution_unit=2, resolution=args["resolution"])
-    df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+
+    #df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
+    df.at[0, "Attachment"] = outfilename  # Add filename to data record
 
     # Add to master table
     master_table = pd.concat([master_table, df], axis=0, ignore_index=True)
@@ -340,10 +367,11 @@ def main():
     print("Using language = " + args["language"] + "\n")
 
     # Initialize the OCR reader object
-    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
+    #ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
+    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3')
 
     # Initialize taxon checker
-    checker = dbtaxonchecker.DBTaxonChecker(dbfilename=str(Path.cwd().parent.joinpath("db").joinpath("db.sqlite3")))
+    checker = gbiftaxonchecker.GBIFTaxonChecker()
 
     master_table = empty_dataframe()
 
@@ -355,13 +383,14 @@ def main():
         no_img += 1
         # Check if it is a pdf file
         if Path(imgfilename).suffix == '.pdf':
-            print("Reading pages in a pdf file")
+            print("Reading pages in a pdf file in " + str(args["resolution"]) + " DPI")
             with Image(filename=imgfilename, resolution=args["resolution"]) as img_wand_all:
                 no_pages = 0
                 # Read all pages
                 for img_wand in img_wand_all.sequence:
                     img = np.array(img_wand)
                     no_pages += 1
+                    print("Reading page " + str(no_pages))
                     master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
 
         elif Path(imgfilename).suffix == '.tif':
