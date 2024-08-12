@@ -224,7 +224,6 @@ def islegtext(text: str) -> bool:
     else:
         return False
 
-# TODO: Make a test for coll. text
 
 def islegdettext(text: str) -> bool:
     """Return true if text is 'Leg. et det' and variants.
@@ -233,6 +232,18 @@ def islegdettext(text: str) -> bool:
         Return: Boolean
     """
     if re.match('^(L|l)eg[.]? (et|&) det[.]?[:]?', text):
+        return True
+    else:
+        return False
+
+# TODO: Make a test for coll. text
+def iscolltext(text: str) -> bool:
+    """Return true if text is 'Coll' or 'Coll.' or 'Coll.:' or 'Coll:'.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('^(C|c)oll[.]?[:]?', text):
         return True
     else:
         return False

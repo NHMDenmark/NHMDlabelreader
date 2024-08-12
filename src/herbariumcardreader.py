@@ -36,7 +36,7 @@ import numpy as np
 from labelreader.ocr import tesseract
 from labelreader.util.util import checkfilepath
 from labelreader.taxonchecker import gbiftaxonchecker
-from labelreader.util.util import isromandate, parseromandate, isdettext, islegtext, islegdettext
+from labelreader.util.util import isromandate, parseromandate, isdettext, islegtext, islegdettext, iscolltext
 
 
 def empty_dataframe():
@@ -94,6 +94,19 @@ def iscataloguenumber(text):
     """
     if re.match('\d+[.-]*\d+', text):
         return True
+    elif re.match('(\w)+\d+[.-]*\d+', text):
+        return True
+    else:
+        return False
+
+def iscataloguecode(text):
+    """Return true if text has the catalogue code format used by NHMD Botany.
+
+            text: String to analyse
+            Return: Boolean
+        """
+    if re.match('(Pt[.]?(\s)?(\+|&)(\s)?G[.]?)|(G[.]?(\s|-)+tør(saml)?[.]?)', text):
+        return True
     else:
         return False
 
@@ -115,7 +128,18 @@ def isdate(text):
         return True
     elif re.match('\d{2,4}[-/]\d{2}', text): # Allow for year range
         return True
-    elif re.match('\d{4}', text): # Allow for year only
+    elif re.match('\d{4}[.,]?', text): # Allow for year only
+        return True
+    else:
+        return False
+
+def lastcharispunctuation(text):
+    """Return true if the last character in the text is a punctuation character '.' or ','.
+
+        text: String to analyse
+        Return: Boolean
+    """
+    if re.match('.*[.,]$', text):
         return True
     else:
         return False
@@ -185,9 +209,14 @@ def parsetext(ocrtext, family, checker):
 
     # Parse first real line for catalogue number
     alt_cat_number = ""
-    for elem in ocrtext[line_idx]:
-        if iscataloguenumber(elem):
-            alt_cat_number = elem
+    #for elem in ocrtext[line_idx]:
+    for word_idx in range(0, len(ocrtext[line_idx])):
+        if iscataloguenumber(ocrtext[line_idx][word_idx]):
+            alt_cat_number = ocrtext[line_idx][word_idx]
+        elif iscataloguecode(ocrtext[line_idx][word_idx]):
+            if len(ocrtext[line_idx]) > word_idx+1:
+                if iscataloguenumber(ocrtext[line_idx][word_idx+1]):
+                    alt_cat_number = ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
 
     # Parse second line
     # Assume either Taxon name or No. and number
@@ -230,7 +259,7 @@ def parsetext(ocrtext, family, checker):
                 species += " " + ocrtext[line_idx][idx]
 
     line_idx += 1 # Next line
-    if len(species)==0:
+    if len(species)==0 and not lastcharispunctuation(genus):
         for idx in range(0, len(ocrtext[line_idx])):
             if isauthor(ocrtext[line_idx][idx]):
                 author_name += ' '.join(ocrtext[line_idx][idx:])
@@ -261,7 +290,7 @@ def parsetext(ocrtext, family, checker):
             collector = joined_line
         elif isdettext(joined_line) or re.match('^(D|d)ed[.]?[:]?', joined_line): # Handle typo in Ded.
             determiner = joined_line
-        elif islegtext(joined_line):
+        elif islegtext(joined_line) or iscolltext(joined_line):
             collector = joined_line
         elif islocality(joined_line):
             # Pass out country
@@ -367,8 +396,8 @@ def main():
     print("Using language = " + args["language"] + "\n")
 
     # Initialize the OCR reader object
-    #ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
-    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3')
+    ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
+    #ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3 --psm 6')
 
     # Initialize taxon checker
     checker = gbiftaxonchecker.GBIFTaxonChecker()
