@@ -68,7 +68,7 @@ def is_nodot(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('No.', text):
+    if re.match('No\.', text):
         return True
     else:
         return False
@@ -79,7 +79,7 @@ def is_nodot_number(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('No. \d+', text):
+    if re.match('No\.[ ]?\d{3}', text):
         return True
     else:
         return False
@@ -92,7 +92,7 @@ def iscataloguenumber(text):
         text: String to analyse
         Return: Boolean
     """
-    if re.match('\d+[.-]*\d+', text):
+    if re.match('\d+([.]?\d+)?([-]\d+)?', text):
         return True
     elif re.match('(\w)+\d+[.-]*\d+', text):
         return True

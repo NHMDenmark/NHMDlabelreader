@@ -1,0 +1,52 @@
+card: blank* top_line blank* (nodot NEWLINE)? blank* taxon_lines blank* line* -> card
+top_line: family? catcode? catnumber NEWLINE -> top_line
+taxon_lines: taxon_line (NEWLINE+ line | "." NEWLINE line | NEWLINE taxon_line NEWLINE) -> taxon_lines
+taxon_line: family? genus? species? subspecies? author? -> taxon_line
+line: (nodot | leg | det | legdet | date_string | locality | mixed ("."| ",")?)? NEWLINE -> line
+blank: NEWLINE
+mixed: (leg "."? | det "."? | legdet "."? | locality "."? | date_string "."?)+ -> mixed
+leg: LEG person -> leg
+det: DET person -> det
+legdet: LEGDET person -> legdet
+person: PERSON -> person
+date_string: DATE_TEXT? date -> date_string
+date: monthnamedate | ROMANDATE | monthyear | YEAR | YEARRANGE | DMYDATE -> date
+
+monthnamedate: /\d{1,2}/ DKMONTH | ENMONTH /\d{2,4}/
+monthyear: DKMONTH /\d{2,4}/ | ENMONTH /\d{2,4}/
+
+nodot: NODOT -> nodot
+NODOT.3: /No\.[ ]?\d{3}/ 
+family: FAMILY -> family
+FAMILY.1: /(?i)(\w)+(eae)/
+genus: GENUS -> genus
+GENUS.1: LETTER+
+species: SPECIES -> species
+SPECIES.1: LETTER+
+subspecies: SUBSPECIES -> subspecies
+SUBSPECIES.1: /sp\.(\w|[ .,()])*/
+author: AUTHOR -> author
+AUTHOR.1: /\(?\w+\)?([ ]\w+)?/
+catnumber: CATNUMBER -> catnumber
+CATNUMBER: /\d+([.]?\d+)?([-]\d+)?/
+catcode: CATCODE -> catcode
+CATCODE: /(Pt[.]?(\s)?(\+|&)(\s)?G[.]?(\s)*[-]?)|(G[.]?(\s|-)+tør(saml)?[.]?)/
+LEG.3: /(L|l)eg(it|[.])?[:]?[ ]*/
+DET.3: /(D|d)et[.]?[:]?[ ]*/
+LEGDET.2: /(L|l)eg[.]? (et|&) det[.]?[:]?[ ]*/
+PERSON.1: /\w+([ \.]?\w+[ \.]?)*|\w[ .](\w[ .])*/
+locality: LOCALITY -> locality
+LOCALITY.-1: /[\"]?[ ]*\w+([ ,.]|\w)*[\"]?/
+
+DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
+DMYDATE.2: /\d{1,2}[ .,-\/]\d{1,2}[ .,-\/]\d{2,4}/
+YEARRANGE.2: /\d{2,4}[-\/]\d{2}/
+YEAR.1: /\d{4}/
+DKMONTH.2: /((?i)januar|jan(\.)?|februar|feb(\.)?|marts|mar(\.)?|april|maj|juni|juli|august|aug(\.)?|september|sept(\.)?|oktober|okt(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
+ENMONTH.2: /((?i)january|jan(\.)?|february|feb(\.)?|march|mar(\.)?|april|may|june|july|august|aug(\.)?|september|sept(\.)?|october|oct(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
+ROMANDATE.2: /\d{1,2}[.,]{1}[IVX1]{1,4}[.,]{1}\d{4}/
+
+%import common.WS_INLINE
+%import common.NEWLINE
+%import common.LETTER
+%ignore WS_INLINE
