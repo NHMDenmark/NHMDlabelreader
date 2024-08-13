@@ -1,13 +1,13 @@
-opencv-contrib-python >= 4.9.0.0
-pytesseract >= 0.3.9
-zxing-cpp == 2.2.0
-pandas >= 2.2.2
-scikit-image >= 0.23.2
+opencv-contrib-python == 4.9.0.80
+pytesseract == 0.3.10
+zxing-cpp >= 2.2.0
+pandas == 2.2.2
+scikit-image == 0.23.2
 numpy == 1.26.4
-openpyxl >= 3.0.10
+openpyxl == 3.1.2
 thefuzz == 0.22.1
 python-Levenshtein == 0.25.0
-pygbif >= 0.6.1
-lark >= 1.1.5
-wand
-pytest >= 7.1.2
+pygbif == 0.6.4
+lark == 1.1.9
+wand == 0.6.13
+pytest >= 8.2.1
