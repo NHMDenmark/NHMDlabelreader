@@ -432,8 +432,15 @@ def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
                                         datetext += str(datecomponent.children[0])
                                         ## TODO: parse date further
                                         if datecomponent.children[0].type == "ROMANDATE":
-                                            parseddate += parseromandate(str(datecomponent.children[0]))
-                                #elif datecomponent.type == "date":
+                                            parseddate += parseromandate(str(datecomponent.children[0]), sep=r".,-")
+                                elif datecomponent.type == "date":
+                                    if len(datetext) > 0:
+                                        datetext += ";"
+                                        parseddate += ";"
+                                    datetext += str(datecomponent.children[0])
+                                    if datecomponent.children[0].type == "ROMANDATE":
+                                        parseddate += parseromandate(str(datecomponent.children[0]), sep=r".,-")
+
                         elif grandchildren.data == "locality":
                             if len(locality) > 0:
                                 locality += ";"

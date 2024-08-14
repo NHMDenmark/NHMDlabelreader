@@ -115,21 +115,23 @@ def roman2int(roman: str) -> Optional[int]:
     return number
 
 
-def isromandate(text: str) -> bool:
+def isromandate(text: str, sep: str = '.,') -> bool:
     """Return true if text has the date format using month in roman numerals (as used by Bøggild et al).
        That is, assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
        Allows for common OCR mistake, meaning that if month contains '1' it will be interpreted as 'I'.
 
        :param text: String to analyse
        :type text: str
+       :param sep: String with characters that is used as separator between day, month and year
+       :type sep: str
        :return: True if text has the date format using month in roman numerals, False otherwise
        :rtype: bool
     """
     # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
     # Include a common OCR mistake of reading I as 1 as acceptable.
-    if re.match(r"^\d{1,2}[.,][IVX1]{1,4}[.,]\d{4}", text):
+    if re.match(r"^\d{1,2}[" + sep + r"][IVX1]{1,4}[" + sep +r"]\d{4}", text):
         # Split into Day, Month, Year parts
-        parts = re.split(r"[.,]", text)
+        parts = re.split(r"[" + sep + r"]", text)
         if len(parts) >= 3:
             # Parse day
             try:
@@ -165,7 +167,7 @@ def isromandate(text: str) -> bool:
 
 
 
-def parseromandate(text: str) -> str:
+def parseromandate(text: str, sep: str = '.,') -> str:
     """Parse a date in the format accepted by isromandate() and return a numerical date in DD-MM-YYYY format.
 
        :param text: String to parse
@@ -174,7 +176,7 @@ def parseromandate(text: str) -> str:
        :rtype: str
     """
     # Remove prefix and suffix characters
-    res = re.search(r"^\d{1,2}[.,]{1}[IVX1]{1,4}[.,]{1}\d{4}", text)
+    res = re.search(r"^\d{1,2}[" + sep + r"]{1}[IVX1]{1,4}[" + sep + r"]{1}\d{4}", text)
     if not res:
         logging.warning("parseromandate expects a date string as input!")
         return ""
@@ -186,7 +188,7 @@ def parseromandate(text: str) -> str:
         return ""
 
     # Split into Day, Month, Year parts
-    parts = re.split(r"[.,]{1}", cleantext)
+    parts = re.split(r"[" + sep + r"]{1}", cleantext)
     if len(parts) == 3:
         day = parts[0]
         month = roman2int(parts[1])

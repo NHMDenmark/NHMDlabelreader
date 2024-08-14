@@ -35,7 +35,7 @@ DET.3: /(D|d)et[\.]?[:]?[ ]*/
 LEGDET.2: /(L|l)eg[\.]? (et|&) det[\.]?[:]?[ ]*/
 PERSON.1: /\w+([ \.]?\w+[ \.]?)*|\w[ \.](\w[ \.])*/
 locality: LOCALITY -> locality
-LOCALITY.-1: /\w+/
+LOCALITY.-1: /\w+[\.]*\w*/
 other: OTHER -> other
 OTHER.-1: /\"[ ]*\w+([ ,\.]|\w)*\"?/
 
