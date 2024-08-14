@@ -20,6 +20,8 @@ limitations under the License.
 """
 
 import argparse
+
+import pandas
 from skimage.io import imread, imsave
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -27,6 +29,7 @@ import re
 from pathlib import PurePath, Path
 from wand.image import Image
 import numpy as np
+import lark
 
 # Adding path to ocr package - this can probably be done smarter
 # from pathlib import Path
@@ -41,22 +44,21 @@ from labelreader.util.util import isromandate, parseromandate, isdettext, islegt
 
 def empty_dataframe():
     record = pd.DataFrame({
-        "Catalogue Number": [],
         "Alt Cat Number": [],
-        "Publish": [],
         "Other Remarks": [],
         "Family": [],
         "Genus": [],
         "Species": [],
+        "Subspecies": [],
         "Author name": [],
         "Scientific name": [],
         "GBIF checked scientific name": [],
         "Determiner": [],
         "Collector": [],
-        "Country": [],
-        "Locality": [],
         "Number": [],
-        "Start Date": [],
+        "Locality": [],
+        "Date": [],
+        "Parsed date": [],
         "Attachment": []
     })
     return record
@@ -179,9 +181,8 @@ def letters_only(text):
     """
     return ''.join([c for c in text if c.isalpha()])
 
-
 def parsetext(ocrtext, family, checker):
-    """Parses the transcribed text from a paper card into appropriate data fields.
+    """Parses the OCR text from a paper card into appropriate data fields.
 
        ocrtext: A list of lists of strings - one for each line on the paper card.
        family: A string with the taxonomic family name of the plant
@@ -195,9 +196,8 @@ def parsetext(ocrtext, family, checker):
 
     # Initialize variables
     datetext = ""
-    country = ""
     locality = ""
-    loc_number = ""
+    col_number = ""
     other = ""
 
     # Skip any beginning blank lines
@@ -225,7 +225,7 @@ def parsetext(ocrtext, family, checker):
 
     # Check for No. and number
     if len(ocrtext[line_idx]) == 2 and (is_nodot(ocrtext[line_idx][word_idx]) and ocrtext[line_idx][word_idx+1].isdigit()):
-        loc_number = ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
+        col_number = ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
         line_idx += 1  # Next line
         word_idx = 0
 
@@ -279,7 +279,7 @@ def parsetext(ocrtext, family, checker):
         if joined_line.isspace():
             continue  # Skip empty lines
         elif is_nodot_number(joined_line):
-            loc_number = joined_line
+            col_number = joined_line
         elif isdate(joined_line):
             if isromandate(joined_line):
                 datetext = parseromandate(joined_line)
@@ -311,22 +311,193 @@ def parsetext(ocrtext, family, checker):
 
 
     record = pd.DataFrame({
-        "Catalogue Number": [""],
         "Alt Cat Number": [alt_cat_number],
-        "Publish": [1],
         "Other Remarks": [other],
         "Family": [family],
         "Genus": [genus],
         "Species": [species],
+        "Subspecies": [""],
         "Author name": [author_name],
         "Scientific name": [ocr_taxonname],
         "GBIF checked scientific name": [checked_gbif_taxonname],
         "Determiner": [determiner],
         "Collector": [collector],
-        "Country": [country],
+        "Number": [col_number],
         "Locality": [locality],
-        "Number": [loc_number],
-        "Start Date": [datetext],
+        "Date": [datetext],
+        "Parsed date": [""],
+        "Attachment": [""]
+    })
+
+    return record
+
+
+
+def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
+    """Parses the OCR text from a paper card into appropriate data fields using the Lark parser generator
+        and a context-free grammar.
+
+       ocrtext: A list of lists of strings - one for each line on the paper card.
+       family: A string with the taxonomic family name of the plant
+       checker: A TaxonChecker object
+       Return record: Returns a Pandas data frame with the parsed transcribed data.
+    """
+
+    # If ocrtext is empty then stop here!
+    if len(ocrtext) == 0:
+        return empty_dataframe()
+
+    # Initialize variables
+    alt_cat_number = ""
+    other = ""
+    genus = ""
+    species = ""
+    subspecies = ""
+    author_name = ""
+    determiner = ""
+    collector = ""
+    col_number = ""
+    locality = ""
+    datetext = ""
+    parseddate = ""
+
+
+    # Read the grammar and create the parser
+    gf = open("../grammars/csad.lark", "r")
+    grammar = gf.read()
+    parser = lark.Lark(grammar, start='card')
+
+    # Create a text string from the list of lists from the OCR
+    text = ""
+    for idx in range(0, len(ocrtext)):
+        text += " ".join(ocrtext[idx]) + "\n"
+
+    # Create the parse tree
+    ptree = parser.parse(text)
+
+    # Process the parse tree
+    for child in ptree.children:
+        if not isinstance(child, lark.Token):
+            if child.data == "top_line":
+                for grandchildren in child.children:
+                    if not isinstance(grandchildren, lark.Token):
+                        for grandchild in grandchildren.children:
+                            if grandchildren.data == "family":
+                                family = str(grandchild)
+                            elif grandchildren.data == "catcode":
+                                alt_cat_number += str(grandchild)
+                            elif grandchildren.data == "catnumber":
+                                alt_cat_number += " " + str(grandchild)
+            elif child.data == "nodot":
+                col_number = str(child.children[0])
+            elif child.data == "taxon_lines":
+                for grandchildren in child.children:
+                    if not isinstance(grandchildren, lark.Token):
+                        if grandchildren.data == "genus":
+                            genus = str(grandchildren.children[0])
+                        elif grandchildren.data == "species":
+                            species = str(grandchildren.children[0])
+                        elif grandchildren.data == "subspecies":
+                            subspecies = str(grandchildren.children[0])
+                        elif grandchildren.data == "author":
+                            author_name = str(grandchildren.children[0])
+                        elif grandchildren.data == "taxon_lines":
+                            for grandchild in grandchildren.children:
+                                if not isinstance(grandchild, lark.Token):
+                                    if grandchild.data == "species":
+                                        species = str(grandchild.children[0])
+                                    elif grandchild.data == "subspecies":
+                                        subspecies = str(grandchild.children[0])
+                                    elif grandchild.data == "author":
+                                        author_name = str(grandchild.children[0])
+            elif child.data == "line":
+                for grandchildren in child.children:
+                    if not isinstance(grandchildren, lark.Token):
+                        if grandchildren.data == "nodot":
+                            col_number = str(grandchildren.children[0])
+                        elif grandchildren.data == "leg":
+                            collector = str(grandchildren.children[1].children[0])
+                        elif grandchildren.data == "det":
+                            determiner = str(grandchildren.children[1].children[0])
+                        elif grandchildren.data == "legdet":
+                            collector = str(grandchildren.children[1].children[0])
+                            determiner = collector
+                        elif grandchildren.data == "date_string":
+                            for datecomponent in grandchildren.children:
+                                if not isinstance(datecomponent, lark.Token):
+                                    if datecomponent.data == "date":
+                                        if len(datetext) > 0:
+                                            datetext += ";"
+                                            parseddate += ";"
+                                        datetext += str(datecomponent.children[0])
+                                        ## TODO: parse date further
+                                        if datecomponent.children[0].type == "ROMANDATE":
+                                            parseddate += parseromandate(str(datecomponent.children[0]))
+                                #elif datecomponent.type == "date":
+                        elif grandchildren.data == "locality":
+                            if len(locality) > 0:
+                                locality += ";"
+                            locality += str(grandchildren.children[0])
+                        elif grandchildren.data == "other":
+                            if len(other) > 0:
+                                other += ";"
+                            other += str(grandchildren.children[0])
+                        elif grandchildren.data == "mixed":
+                            for mixedcomponent in grandchildren.children:
+                                if not isinstance(mixedcomponent, lark.Token):
+                                    if mixedcomponent.data == "leg":
+                                        collector = str(mixedcomponent.children[1].children[0])
+                                    elif mixedcomponent.data == "det":
+                                        determiner = str(mixedcomponent.children[1].children[0])
+                                    elif mixedcomponent.data == "legdet":
+                                        collector = str(mixedcomponent.children[1].children[0])
+                                        determiner = collector
+                                    elif mixedcomponent.data == "locality":
+                                        if len(locality) > 0:
+                                            locality += ";"
+                                        locality += str(mixedcomponent.children[0])
+                                    elif mixedcomponent.data == "date_string":
+                                        for datecomponent in mixedcomponent.children:
+                                            if not isinstance(datecomponent, lark.Token):
+                                                if datecomponent.data == "date":
+                                                    if len(datetext) > 0:
+                                                        datetext += ";"
+                                                        parseddate += ";"
+                                                    datetext += str(datecomponent.children[0])
+
+
+
+
+
+
+
+
+
+    # Clean up the genus name
+    family = family.lower().capitalize()
+    #genus = letters_only(genus)
+    genus = genus.lower().capitalize()
+
+    # check taxonomic full name
+    ocr_taxonname = " ".join([genus, species, author_name])
+    checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
+
+    record = pd.DataFrame({
+        "Alt Cat Number": [alt_cat_number],
+        "Other Remarks": [other],
+        "Family": [family],
+        "Genus": [genus],
+        "Species": [species],
+        "Subspecies": [subspecies],
+        "Author name": [author_name],
+        "Scientific name": [ocr_taxonname],
+        "GBIF checked scientific name": [checked_gbif_taxonname],
+        "Determiner": [determiner],
+        "Collector": [collector],
+        "Number": [col_number],
+        "Locality": [locality],
+        "Date": [datetext],
+        "Parsed date": [parseddate],
         "Attachment": [""]
     })
 
@@ -348,7 +519,8 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
             print(ocrtext[i])
 
     family = Path(imgfilename).stem # Assume that the family name is the filename
-    df = parsetext(ocrtext, family, checker)
+    #df = parsetext(ocrtext, family, checker)
+    df = larkparsetext(ocrtext, family, checker)
 
     #  In case of no Alt Cat Number just pick a unique random file name
     if df["Alt Cat Number"][0] == "":

@@ -14,7 +14,7 @@
 #
 
 import argparse
-from lark import Lark
+from lark import Lark, Token
 
 
 def main():
@@ -40,7 +40,15 @@ def main():
     # Parse tree
     ptree = parser.parse(text)
     print(ptree.pretty())
-    print(ptree)
+    #print(ptree)
+    print("\nchildren: ")
+
+    for child in ptree.children:
+        print(child)
+        if not isinstance(child, Token) and child.data == "nodot":
+            print("  " + str(child.children[0]))
+        print("")
+
 
 if __name__ == '__main__':
     main()
