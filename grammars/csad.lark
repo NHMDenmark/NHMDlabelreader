@@ -38,7 +38,7 @@ PERSON.1: /[ÆØÅA-Z](\.)[ ]*(\w(\.)[ ]*)*|\w+([,\.]?[ ]*\w+[ \.]?)*/
 locality: LOCALITY -> locality
 LOCALITY.-1: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæøå]*)?/
 other: OTHER -> other
-OTHER.-1: /(\"|\|)?[ ]*\w+([ ,\.:\/]|\w)*(\"|\|)?/ 
+OTHER.-1: /(\"|\|)?[ ]*\w+([ ,\.:\/\-]|\w)*(\"|\|)?/
 
 DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
 DMYDATE.2: /\d{1,2}[ \.,\/-]\d{1,2}[ \.,\/-]\d{2,4}/
@@ -47,7 +47,7 @@ YEARRANGE.2: /\d{2,4}[-\/]\d{1,2}/
 YEAR.2: /\d{4}/
 DKMONTH.2: /((?i)januar|jan(\.)?|februar|feb(\.)?|marts|mar(\.)?|april|maj|juni|juli|august|aug(\.)?|september|sept(\.)?|oktober|okt(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
 ENMONTH.2: /((?i)january|jan(\.)?|february|feb(\.)?|march|mar(\.)?|april|may|june|july|august|aug(\.)?|september|sept(\.)?|october|oct(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
-ROMANDATE.2: /(\d{1,2}[\.,\-\/]{1})?[IVX]{1,4}[\/]?[\.,\-\/]{1}\d{4}/
+ROMANDATE.2: /(\d{1,2}[\.,\-\/]{1})?[IVX]{1,4}[\/]?[\.,\-\/]{1}[ ]?\d{4}/
 
 GARBAGE: /[…]/
 
