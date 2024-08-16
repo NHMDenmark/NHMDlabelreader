@@ -45,8 +45,8 @@ def main():
 
     for child in ptree.children:
         print(child)
-        if not isinstance(child, Token) and child.data == "nodot":
-            print("  " + str(child.children[0]))
+        # if not isinstance(child, Token) and child.data == "nodot":
+        #     print("  " + str(child.children[0]))
         print("")
 
 
