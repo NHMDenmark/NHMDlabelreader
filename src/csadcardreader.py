@@ -20,16 +20,15 @@ limitations under the License.
 """
 
 import argparse
-
-import pandas
 from skimage.io import imread, imsave
 import matplotlib.pyplot as plt
 import pandas as pd
 import re
-from pathlib import PurePath, Path
+from pathlib import Path
 from wand.image import Image
 import numpy as np
 import lark
+import datetime
 
 # Adding path to ocr package - this can probably be done smarter
 # from pathlib import Path
@@ -58,282 +57,270 @@ def empty_dataframe():
         "Number": [],
         "Locality": [],
         "Date": [],
-        "Parsed date": [],
+        "Parsed date DD-MM-YYYY": [],
+        "Date range": [],
         "Attachment": []
     })
     return record
 
 
-def is_nodot(text):
-    """Return true if text starts with 'No.' as used by NHMD Botany.
+def isvaliddate(datestr: str) -> bool:
+    """Return True if the date string is not in the future.
 
-        text: String to analyse
+        datestr: String with the date to check in the format DD-MM-YYYY
         Return: Boolean
     """
-    if re.match('No\.', text):
-        return True
-    else:
-        return False
+    try:
+        # Check that day and month are non-zero
+        parts = re.split("[-]", datestr)
+        if int(parts[0]) == 0:
+            day = 1
+        else:
+            day = int(parts[0])
 
-def is_nodot_number(text):
-    """Return true if text starts with 'No. ' followed by a number as used by NHMD Botany.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('No\.[ ]?\d{3}', text):
-        return True
-    else:
-        return False
-
-
-def iscataloguenumber(text):
-    """Return true if text has the catalogue number format used by NHMD Botany.
-       Assume format is digits possible separated by '.' or '-'.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('\d+([.]?\d+)?([-]\d+)?', text):
-        return True
-    elif re.match('(\w)+\d+[.-]*\d+', text):
-        return True
-    else:
-        return False
-
-def iscataloguecode(text):
-    """Return true if text has the catalogue code format used by NHMD Botany.
-
-            text: String to analyse
-            Return: Boolean
-        """
-    if re.match('(Pt[.]?(\s)?(\+|&)(\s)?G[.]?)|(G[.]?(\s|-)+tør(saml)?[.]?)', text):
-        return True
-    else:
-        return False
-
-def isdate(text):
-    """Return true if text has the date format used by NHMD Botany.
-       The format can be any of the normal date formats used in the world as well as roman numeral for month format.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    # Include a common OCR mistake of reading I as 1 as acceptable.
-    if isromandate(text): # Allow for roman numerals format
-        return True
-    elif re.match('\d{1,2}[ .,/]\d{1,2}[ .,/-]\d{2,4}', text): # Allow for day and month numerals format
-        return True
-    elif re.match('(\d{1,2})?[ .,/]?(\w)*[ .,/-]\d{2,4}', text): # Allow for month name
-        return True
-    elif re.match('(\w)+[.]*(\s)*\d{2,4}', text): # Allow for month name and year only
-        return True
-    elif re.match('\d{2,4}[-/]\d{2}', text): # Allow for year range
-        return True
-    elif re.match('\d{4}[.,]?', text): # Allow for year only
-        return True
-    else:
-        return False
-
-def lastcharispunctuation(text):
-    """Return true if the last character in the text is a punctuation character '.' or ','.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('.*[.,]$', text):
-        return True
-    else:
-        return False
-
-def islocality(text): # TODO: Adjust to the NHMD Botany format
-    """Return true if text has the locality format used by Bøggild.
-       Assume the locality text starts with 'D,'
-
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('D,(\w|\s|[.,])+', text):
-        return True
-    else:
+        if int(parts[1]) == 0:
+            month = 1
+        else:
+            month = int(parts[1])
+        parsed_date = "%02d" % day + "-" + "%02d" % month + "-" + parts[2]
+        date = datetime.datetime.strptime(parsed_date,"%d-%m-%Y").date()
+        today = datetime.date.today()
+        if date < today:
+            return True
+        else:
+            return False
+    except ValueError:
         return False
 
 
-def isauthor(text): # TODO: This is too restrictive
-    """Return true if text is a taxonomic author.
-       Assumes that author is inclosed in parentheses.
-
-        text: String to analyse
-        Return: Boolean
-    """
-    if re.match('\((\d|\w|\s|[.,)])*', text):
-        return True
-    else:
-        return False
-
-
-
-def letters_only(text):
-    """Clean the text and return a version with only letters.
+def clean_catalogue_number(text: str) -> str:
+    """Clean the text and return a version with digits, '.' and '-'.
 
         text: String to clean
         Return: A cleaned string
     """
-    return ''.join([c for c in text if c.isalpha()])
-
-def parsetext(ocrtext, family, checker):
-    """Parses the OCR text from a paper card into appropriate data fields.
-
-       ocrtext: A list of lists of strings - one for each line on the paper card.
-       family: A string with the taxonomic family name of the plant
-       checker: A TaxonChecker object
-       Return record: Returns a Pandas data frame with the parsed transcribed data.
-    """
-
-    # If ocrtext is empty then stop here!
-    if len(ocrtext) == 0:
-        return empty_dataframe()
-
-    # Initialize variables
-    datetext = ""
-    locality = ""
-    col_number = ""
-    other = ""
-
-    # Skip any beginning blank lines
-    line_idx = 0
-    for idx in range(0, len(ocrtext)):
-        if not ocrtext[idx][0].isspace():
-            line_idx = idx
-            break
-
-    # Parse first real line for catalogue number
-    alt_cat_number = ""
-    #for elem in ocrtext[line_idx]:
-    for word_idx in range(0, len(ocrtext[line_idx])):
-        if iscataloguenumber(ocrtext[line_idx][word_idx]):
-            alt_cat_number = ocrtext[line_idx][word_idx]
-        elif iscataloguecode(ocrtext[line_idx][word_idx]):
-            if len(ocrtext[line_idx]) > word_idx+1:
-                if iscataloguenumber(ocrtext[line_idx][word_idx+1]):
-                    alt_cat_number = ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
-
-    # Parse second line
-    # Assume either Taxon name or No. and number
-    line_idx += 1 # Next line
-    word_idx = 0
-
-    # Check for No. and number
-    if len(ocrtext[line_idx]) == 2 and (is_nodot(ocrtext[line_idx][word_idx]) and ocrtext[line_idx][word_idx+1].isdigit()):
-        col_number = ocrtext[line_idx][word_idx] + " " + ocrtext[line_idx][word_idx+1]
-        line_idx += 1  # Next line
-        word_idx = 0
-
-    # Parse taxon line
-    genus = ""
-    if len(ocrtext[line_idx]) >= 1:
-        genus = ocrtext[line_idx][word_idx].lower().capitalize()
-        # res = checker.check_name(genus)
-        # if not isinstance(res, type(None)):
-        #    corrected_fullname += res[0]
-
-        word_idx += 1
-
-    species = ""
-    if len(ocrtext[line_idx]) > 2:
-        species = ocrtext[line_idx][word_idx].lower()
-        # res = checker.check_name(species)
-        # if not isinstance(res, type(None)):
-        #    corrected_fullname += res[0]
-
-        word_idx += 1
-
-    author_name = ""
-    if len(ocrtext[line_idx]) > word_idx:
-        # Handle the case with species names containing more than one word
-        for idx in range(word_idx, len(ocrtext[line_idx])):
-            if isauthor(ocrtext[line_idx][idx]):
-                author_name = ' '.join(ocrtext[line_idx][idx:])
-                break
-            else:
-                species += " " + ocrtext[line_idx][idx]
-
-    line_idx += 1 # Next line
-    if len(species)==0 and not lastcharispunctuation(genus):
-        for idx in range(0, len(ocrtext[line_idx])):
-            if isauthor(ocrtext[line_idx][idx]):
-                author_name += ' '.join(ocrtext[line_idx][idx:])
-                break
-            else:
-                species += " " + ocrtext[line_idx][idx]
-
-        line_idx +=1 # Next line
+    cleantext = re.sub(r"[.,]{1,2}", '.', text)
+    cleantext = re.sub(r"[-—~]+", '-', cleantext)
+    cleantext = re.sub(r"l", '1', cleantext)
+    cleantext = re.sub(r"o", '0', cleantext)
+    return cleantext
 
 
-    collector = ""
-    determiner = ""
 
-    # Parse the remaining lines
-    for idx in range(line_idx, len(ocrtext)):
-        joined_line = ' '.join(ocrtext[idx])
-        if joined_line.isspace():
-            continue  # Skip empty lines
-        elif is_nodot_number(joined_line):
-            col_number = joined_line
-        elif isdate(joined_line):
-            if isromandate(joined_line):
-                datetext = parseromandate(joined_line)
-            else:
-                datetext = joined_line
-        elif islegdettext(joined_line):
-            determiner = joined_line
-            collector = joined_line
-        elif isdettext(joined_line) or re.match('^(D|d)ed[.]?[:]?', joined_line): # Handle typo in Ded.
-            determiner = joined_line
-        elif islegtext(joined_line) or iscolltext(joined_line):
-            collector = joined_line
-        elif islocality(joined_line):
-            # Pass out country
-            locality = ' '.join(ocrtext[idx][1:])
+class CSADVisitor(lark.Visitor):
+    def  __init__(self):
+        super().__init__()
+        self.data = {}
+
+    # top_line methods
+    def family(self, tree):
+        if "family" in self.data:
+            self.data["family"] += ";" + str(tree.children[0])
         else:
-            # Add the remaining text to the Other Remarks field
-            if len(other) > 0:
-                other += "; "
-            other += joined_line
+            self.data["family"] = str(tree.children[0])
+
+    def catcode(self, tree):
+        self.data["catcode"] = str(tree.children[0])
+
+    def catnumber(self, tree):
+        self.data["catnumber"] = clean_catalogue_number(str(tree.children[0]))
+
+    # nodot methods
+    def nodot(self, tree):
+        if "nodot" in self.data:
+            self.data["nodot"] += ";" + str(tree.children[0])
+        else:
+            self.data["nodot"] = str(tree.children[0])
+
+    # taxon_lines methods
+    def genus(self, tree):
+        if "genus" in self.data:
+            self.data["genus"] += " " + str(tree.children[0])
+        else:
+            self.data["genus"] = str(tree.children[0])
+
+    def species(self, tree):
+        if "species" in self.data:
+            self.data["species"] += " " + str(tree.children[0])
+        else:
+            self.data["species"] = str(tree.children[0])
+
+    def subspecies(self, tree):
+        if "subspecies" in self.data:
+            self.data["subspecies"] += " " + str(tree.children[0])
+        else:
+            self.data["subspecies"] = str(tree.children[0])
+
+    def author(self, tree):
+        if "author" in self.data:
+            self.data["author"] += " " + str(tree.children[0])
+        else:
+            self.data["author"] = str(tree.children[0])
+
+    # leg and det methods
+    def leg(self, tree):
+        if "leg" in self.data:
+            self.data["leg"] += ";" + str(tree.children[1].children[0])
+        else:
+            self.data["leg"] = str(tree.children[1].children[0])
+
+    def det(self, tree):
+        if "det" in self.data:
+            self.data["det"] += ";" + str(tree.children[1].children[0])
+        else:
+            self.data["det"] = str(tree.children[1].children[0])
+
+    def legdet(self, tree):
+        if "leg" in self.data:
+            self.data["leg"] += ";" + str(tree.children[1].children[0])
+        else:
+            self.data["leg"] = str(tree.children[1].children[0])
+        if "det" in self.data:
+            self.data["det"] += ";" + str(tree.children[1].children[0])
+        else:
+            self.data["det"] = str(tree.children[1].children[0])
+
+    # locality and other methods
+    def locality(self, tree):
+        if "locality" in self.data:
+            self.data["locality"] += ";" + str(tree.children[0])
+        else:
+            self.data["locality"] = str(tree.children[0])
+
+    def other(self, tree):
+        if "other" in self.data:
+            self.data["other"] += ";" + str(tree.children[0])
+        else:
+            self.data["other"] = str(tree.children[0])
+
+    # date methods
+    def daterange(self, tree):
+        if "daterange" in self.data:
+            self.data["daterange"] += ";" + str(tree.children[0])
+        else:
+            self.data["daterange"] = str(tree.children[0])
+
+    def romandate(self, tree):
+        date = str(tree.children[0])
+        if "date" in self.data:
+            self.data["date"] += ";" + date
+        else:
+            self.data["date"] = date
+
+        print("Date: " + date)
+        # Remove OCR errors
+        date = re.sub(r"[ \.,…\-/]+", "-", date)
+        print("Cleaned date: " + date)
+        # TODO: Fix parseromandate to handle month-year format
+        parsed_date  = parseromandate(date, sep=r"-")
+        if "parsed_date" in self.data:
+            self.data["parsed_date"] += ";" + parsed_date
+        else:
+            self.data["parsed_date"] = parsed_date
+
+    def year(self, tree):
+        year = str(tree.children[0])
+        parsed_date = "00-00-" + year
+
+        if isvaliddate(parsed_date):
+            if "date" in self.data:
+                self.data["date"] += ";" + year
+            else:
+                self.data["date"] = year
+
+            if "parsed_date" in self.data:
+                self.data["parsed_date"] += ";" + parsed_date
+            else:
+                self.data["parsed_date"] = parsed_date
+        else:
+            if "other" in self.data:
+                self.data["other"] += ";" + year
+            else:
+                self.data["other"] = year
 
 
-    # Clean up the genus name
-    genus = letters_only(genus)
+    def dmydate(self, tree):
+        date = str(tree.children[0])
+        if "date" in self.data:
+            self.data["date"] += ";" + date
+        else:
+            self.data["date"] = date
 
-    # check taxonomic full name
-    ocr_taxonname = " ".join([genus, species, author_name])
-    checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
+        # Split into Day, Month, Year parts
+        parts = re.split(r"[ .,/-]{1}", date)
+        if len(parts) == 3:
+            day = parts[0]
+            month = parts[1]
+            year = parts[2]
+        else:
+            day = "00"
+            month = "00"
+            year = "0000"
+        parsed_date = "%02d" % int(day) + "-" + "%02d" % int(month) + "-" + "%04d" % int(year)
+        if "parsed_date" in self.data:
+            self.data["parsed_date"] += ";" + parsed_date
+        else:
+            self.data["parsed_date"] = parsed_date
+
+    def monthnamedate(self, tree):
+        date = ""
+        day = ""
+        month = ""
+        year = ""
+        if len(tree.children) == 3:
+            day = str(tree.children[0])
+        if len(tree.children) >= 2:
+            month = str(tree.children[-2])
+        if len(tree.children) >= 1:
+            year = str(tree.children[-1])
+
+        if len(day) != 0:
+            date += day + " "
+        if len(month) != 0:
+            date += month + " "
+        date += year
+
+        if "date" in self.data:
+            self.data["date"] += ";" + date
+        else:
+            self.data["date"] = date
+
+        # Parse the month name
+        month_map = {"januar": "01", "january": "01",  "jan": "01",
+                     "februar": "02", "february": "02", "feb": "02",
+                     "marts": "03", "march": "03", "mar": "03",
+                     "april": "04",
+                     "maj": "05", "may": "05",
+                     "juni": "06", "june": "06",
+                     "juli": "07", "july": "07",
+                     "august": "08", "aug": "08",
+                     "september": "09", "sep": "09",
+                     "oktober": "10", "october": "10", "okt": "10", "oct": "10",
+                     "november": "11", "nov": "11",
+                     "december": "12", "dec": "12"
+                     }
+
+        month = re.sub(r"[.,]", "", month).lower()
+        if month in month_map:
+            month_num = month_map[month]
+        else:
+            month_num = "00"
+
+        parsed_date = ""
+        if len(day) != 0:
+            parsed_date += "%02d" % int(day) + "-"
+        else:
+            parsed_date += "00-"
+        parsed_date += month_num + "-" + "%04d" % int(year)
+        if "parsed_date" in self.data:
+            self.data["parsed_date"] += ";" + parsed_date
+        else:
+            self.data["parsed_date"] = parsed_date
 
 
-    record = pd.DataFrame({
-        "Alt Cat Number": [alt_cat_number],
-        "Other Remarks": [other],
-        "Family": [family],
-        "Genus": [genus],
-        "Species": [species],
-        "Subspecies": [""],
-        "Author name": [author_name],
-        "Scientific name": [ocr_taxonname],
-        "GBIF checked scientific name": [checked_gbif_taxonname],
-        "Determiner": [determiner],
-        "Collector": [collector],
-        "Number": [col_number],
-        "Locality": [locality],
-        "Date": [datetext],
-        "Parsed date": [""],
-        "Attachment": [""]
-    })
-
-    return record
 
 
-
-def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
+def larkparsetext(ocrtext: str, family: str, checker: str) -> pd.DataFrame:
     """Parses the OCR text from a paper card into appropriate data fields using the Lark parser generator
         and a context-free grammar.
 
@@ -360,6 +347,7 @@ def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
     locality = ""
     datetext = ""
     parseddate = ""
+    daterange = ""
 
 
     # Read the grammar and create the parser
@@ -376,118 +364,47 @@ def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
     ptree = parser.parse(text)
 
     # Process the parse tree
-    for child in ptree.children:
-        if not isinstance(child, lark.Token):
-            if child.data == "top_line":
-                for grandchildren in child.children:
-                    if not isinstance(grandchildren, lark.Token):
-                        for grandchild in grandchildren.children:
-                            if grandchildren.data == "family":
-                                family = str(grandchild)
-                            elif grandchildren.data == "catcode":
-                                alt_cat_number += str(grandchild)
-                            elif grandchildren.data == "catnumber":
-                                alt_cat_number += " " + str(grandchild)
-            elif child.data == "nodot":
-                col_number = str(child.children[0])
-            elif child.data == "taxon_lines":
-                for grandchildren in child.children:
-                    if not isinstance(grandchildren, lark.Token):
-                        if grandchildren.data == "genus":
-                            genus = str(grandchildren.children[0])
-                        elif grandchildren.data == "species":
-                            species = str(grandchildren.children[0])
-                        elif grandchildren.data == "subspecies":
-                            subspecies = str(grandchildren.children[0])
-                        elif grandchildren.data == "author":
-                            author_name = str(grandchildren.children[0])
-                        elif grandchildren.data == "taxon_lines":
-                            for grandchild in grandchildren.children:
-                                if not isinstance(grandchild, lark.Token):
-                                    if grandchild.data == "species":
-                                        species = str(grandchild.children[0])
-                                    elif grandchild.data == "subspecies":
-                                        subspecies = str(grandchild.children[0])
-                                    elif grandchild.data == "author":
-                                        author_name = str(grandchild.children[0])
-            elif child.data == "line":
-                for grandchildren in child.children:
-                    if not isinstance(grandchildren, lark.Token):
-                        if grandchildren.data == "nodot":
-                            col_number = str(grandchildren.children[0])
-                        elif grandchildren.data == "leg":
-                            collector = str(grandchildren.children[1].children[0])
-                        elif grandchildren.data == "det":
-                            determiner = str(grandchildren.children[1].children[0])
-                        elif grandchildren.data == "legdet":
-                            collector = str(grandchildren.children[1].children[0])
-                            determiner = collector
-                        elif grandchildren.data == "date_string":
-                            for datecomponent in grandchildren.children:
-                                if not isinstance(datecomponent, lark.Token):
-                                    if datecomponent.data == "date":
-                                        if len(datetext) > 0:
-                                            datetext += ";"
-                                            parseddate += ";"
-                                        datetext += str(datecomponent.children[0])
-                                        ## TODO: parse date further
-                                        if datecomponent.children[0].type == "ROMANDATE":
-                                            parseddate += parseromandate(str(datecomponent.children[0]), sep=r".,-")
-                                elif datecomponent.type == "date":
-                                    if len(datetext) > 0:
-                                        datetext += ";"
-                                        parseddate += ";"
-                                    datetext += str(datecomponent.children[0])
-                                    if datecomponent.children[0].type == "ROMANDATE":
-                                        parseddate += parseromandate(str(datecomponent.children[0]), sep=r".,-")
+    visitor  = CSADVisitor()
+    visitor.visit(ptree)
+    print(visitor.data)
 
-                        elif grandchildren.data == "locality":
-                            if len(locality) > 0:
-                                locality += ";"
-                            locality += str(grandchildren.children[0])
-                        elif grandchildren.data == "other":
-                            if len(other) > 0:
-                                other += ";"
-                            other += str(grandchildren.children[0])
-                        elif grandchildren.data == "mixed":
-                            for mixedcomponent in grandchildren.children:
-                                if not isinstance(mixedcomponent, lark.Token):
-                                    if mixedcomponent.data == "leg":
-                                        collector = str(mixedcomponent.children[1].children[0])
-                                    elif mixedcomponent.data == "det":
-                                        determiner = str(mixedcomponent.children[1].children[0])
-                                    elif mixedcomponent.data == "legdet":
-                                        collector = str(mixedcomponent.children[1].children[0])
-                                        determiner = collector
-                                    elif mixedcomponent.data == "locality":
-                                        if len(locality) > 0:
-                                            locality += ";"
-                                        locality += str(mixedcomponent.children[0])
-                                    elif mixedcomponent.data == "date_string":
-                                        for datecomponent in mixedcomponent.children:
-                                            if not isinstance(datecomponent, lark.Token):
-                                                if datecomponent.data == "date":
-                                                    if len(datetext) > 0:
-                                                        datetext += ";"
-                                                        parseddate += ";"
-                                                    datetext += str(datecomponent.children[0])
-
-
-
-
-
-
-
-
-
-    # Clean up the genus name
-    family = family.lower().capitalize()
-    #genus = letters_only(genus)
-    genus = genus.lower().capitalize()
+    # Extract the data from the visitor
+    # TODO: Check if the data is present before assigning it to the variables
+    if "catcode" in visitor.data:
+        alt_cat_number += visitor.data["catcode"]
+    if "catnumber" in visitor.data:
+        alt_cat_number += visitor.data["catnumber"]
+    if "family" in visitor.data:
+        family = visitor.data["family"].lower().capitalize()
+    if "genus" in visitor.data:
+        genus = visitor.data["genus"].lower().capitalize()
+    if "species" in visitor.data:
+        species = visitor.data["species"].lower()
+    if "subspecies" in visitor.data:
+        subspecies = visitor.data["subspecies"]
+    if "author" in visitor.data:
+        author_name = visitor.data["author"]
+    if "leg" in visitor.data:
+        collector = visitor.data["leg"]
+    if "det" in visitor.data:
+        determiner = visitor.data["det"]
+    if "nodot" in visitor.data:
+        col_number = visitor.data["nodot"]
+    if "locality" in visitor.data:
+        locality = visitor.data["locality"]
+    if "other" in visitor.data:
+        other = visitor.data["other"]
+    if "date" in visitor.data:
+        datetext = visitor.data["date"]
+    if "parsed_date" in visitor.data:
+        parseddate = visitor.data["parsed_date"]
+    if "daterange" in visitor.data:
+        daterange = visitor.data["daterange"]
 
     # check taxonomic full name
     ocr_taxonname = " ".join([genus, species, author_name])
     checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
+
 
     record = pd.DataFrame({
         "Alt Cat Number": [alt_cat_number],
@@ -504,7 +421,8 @@ def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
         "Number": [col_number],
         "Locality": [locality],
         "Date": [datetext],
-        "Parsed date": [parseddate],
+        "Parsed date DD-MM-YYYY": [parseddate],
+        "Date range": [daterange],
         "Attachment": [""]
     })
 
@@ -513,9 +431,6 @@ def larkparsetext(ocrtext: str, family: str, checker: str) -> pandas.DataFrame:
 
 def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker):
     """Parse one image and create a row in the master_table"""
-    if args["verbose"]:
-        plt.figure()
-        plt.imshow(img)
 
     ocrreader.read_image(img)
 
@@ -526,7 +441,6 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
             print(ocrtext[i])
 
     family = Path(imgfilename).stem # Assume that the family name is the filename
-    #df = parsetext(ocrtext, family, checker)
     df = larkparsetext(ocrtext, family, checker)
 
     #  In case of no Alt Cat Number just pick a unique random file name
@@ -536,14 +450,14 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
         outfilename = df["Alt Cat Number"][0] + ".tif"
 
     # Check that filename is unique otherwise create an extension of it to make unique
-    outpath = Path(args["output"], outfilename)
-    outpath = checkfilepath(outpath)
-    outfilename = outpath.name
+    outpath = Path(args["output"], Path(imgfilename).stem)
+    outfilepath = Path(outpath, outfilename)
+    outfilepath = checkfilepath(outfilepath)
+    outfilename = outfilepath.name
 
-    imsave(str(outpath), img, check_contrast=False, plugin='pil', compression="tiff_lzw",
+    imsave(str(outfilepath), img, check_contrast=False, plugin='pil', compression="tiff_lzw",
            resolution_unit=2, resolution=args["resolution"])
 
-    #df["Attachment"].update(pd.Series([outfilename], index=[0]))  # Add filename to data record
     df.at[0, "Attachment"] = outfilename  # Add filename to data record
 
     # Add to master table
@@ -586,12 +500,19 @@ def main():
     # Loop over a directory of images
     no_img = 0 # Count number of images
     no_pages = 0 # Count number of pages
+    outfilepath = Path(args["output"], "output.xlsx")
     for imgfilename in args["image"]:
         print("Transcribing " + imgfilename)
         no_img += 1
         # Check if it is a pdf file
         if Path(imgfilename).suffix == '.pdf':
             print("Reading pages in a pdf file in " + str(args["resolution"]) + " DPI")
+            # Make sure output directory exists
+            outpath = Path(args["output"], Path(imgfilename).stem)
+            outfilepath = Path(outpath, Path(imgfilename).stem + ".xlsx")
+            if not outpath.exists():
+                outpath.mkdir()
+
             with Image(filename=imgfilename, resolution=args["resolution"]) as img_wand_all:
                 no_pages = 0
                 # Read all pages
@@ -610,13 +531,8 @@ def main():
             img = imread(imgfilename)
             master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
 
-
-    # If verbose mode then show all opened figures
-    if args["verbose"]:
-        plt.show()
-
     # Write Excel sheet to disk
-    master_table.to_excel(PurePath(args["output"], "output.xlsx").as_posix(), index=False)
+    master_table.to_excel(outfilepath.as_posix(), index=False)
 
 
 if __name__ == '__main__':

@@ -3,20 +3,23 @@ top_line: family? "|"?  catcode? catnumber? (LETTER* NEWLINE | NEWLINE) -> top_l
 taxon_lines: "—"? family? genus? (species? subspecies? author? ["," | "."] NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
-mixed: ("-"? nodot ["," | "."] | leg ["," | "."] | det ["," | "."] | legdet ["," | "."] | locality ["," | "."] | other ["," | "."] |date_string ["," | "."])+ -> mixed
+mixed: (nodot ["," | "."] | leg ["," | "."] | det ["," | "."] | legdet ["," | "."] | locality ["," | "."] | other ["," | "."] |date_string ["," | "."])+ -> mixed
 leg: LEG person ("-"|"'")? -> leg
 det: DET person -> det
 legdet: LEGDET person -> legdet
 person: PERSON -> person
 date_string: DATE_TEXT? date -> date_string
-date: (monthnamedate | ROMANDATE | YEAR | YEARRANGE | DMYDATE | daterange) -> date
+date: (monthnamedate | romandate | year | dmydate | daterange) -> date
 
-monthnamedate: (/\d{1,2}(\.)?/)? (DKMONTH | ENMONTH) /\d{2,4}/ -> monthnamedate
-daterange: DATERANGE -> daterange
+monthnamedate: ((/\d{1,2}(\.)?/)? (DKMONTH | ENMONTH) /\d{2,4}/) -> monthnamedate
+daterange: (DATERANGE | YEARRANGE) -> daterange
+romandate: ROMANDATE -> romandate
+year: YEAR -> year
+dmydate: DMYDATE -> dmydate
 
 
 nodot: NODOT -> nodot
-NODOT.1: /(No(\.|,)[ ]?)?\d{3,5}/
+NODOT.2: /(No(\.|,)[ ]?\d{3,5}|\d{3}[.,])/
 family: FAMILY -> family
 FAMILY.1: /(?i)(\w)+(ae)/
 genus: GENUS -> genus
@@ -31,23 +34,23 @@ catnumber: CATNUMBER -> catnumber
 CATNUMBER: /\w*\d+(\w|\))*([.,]{0,2}\d+)?([-—~]+\d+)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
 CATCODE: /(Pt[\.]?(\s)?(\+|&)(\s)?G[\.]?(\s)*[-]?)|(G[\.]?[:]?(\s|-|…)+(tør(saml)?)?[\.]?)/
-LEG.3: /(L|l)eg(it|[,\.])?[:]?[ ]*/
+LEG.2: /(L|l)eg(it|[,\.])?[:]?[ ]*/
 DET.3: /(D|d)et[,\.]?[:]?[ ]*/
-LEGDET.2: /(L|l)eg[,\.]? (et|&) det[,\.]?[:]?[ ]*/
+LEGDET.3: /(L|l)eg[,\.]? (et|&) det[,\.]?[:]?[ ]*/
 PERSON.1: /[ÆØÅA-Z](\.)[ ]*(\w(\.)[ ]*)*|\w+([,\.]?[ ]*\w+[ \.]?)*/
 locality: LOCALITY -> locality
-LOCALITY.-1: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæøå]*)?/
+LOCALITY.0: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæøå]*)?/
 other: OTHER -> other
-OTHER.-1: /(\"|\|)?[ ]*\w+([ ,\.:\/\-]|\w)*(\"|\|)?/
+OTHER.0: /(\"|\|)?[ ]*\w+([ ,\.:\/\-]|\w)*(\"|\|)?/
 
 DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
 DMYDATE.2: /\d{1,2}[ \.,\/-]\d{1,2}[ \.,\/-]\d{2,4}/
 DATERANGE.2: /\d{1,2}(\-)\d{1,2}[ \.,\/]\d{1,2}[ \.,\/-]\d{2,4}/
-YEARRANGE.2: /\d{2,4}[-\/]\d{1,2}/
+YEARRANGE.2: /\d{2,4}[-\/]\d{2}/
 YEAR.2: /\d{4}/
 DKMONTH.2: /((?i)januar|jan(\.)?|februar|feb(\.)?|marts|mar(\.)?|april|maj|juni|juli|august|aug(\.)?|september|sept(\.)?|oktober|okt(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
 ENMONTH.2: /((?i)january|jan(\.)?|february|feb(\.)?|march|mar(\.)?|april|may|june|july|august|aug(\.)?|september|sept(\.)?|october|oct(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
-ROMANDATE.2: /(\d{1,2}[\.,\-\/]{1})?[IVX]{1,4}[\/]?[\.,\-\/]{1}[ ]?\d{4}/
+ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?[IVX]{1,4}[\/]?[\.,\-\/]{1}[ ]?\d{4}/
 
 GARBAGE: /[…]/
 

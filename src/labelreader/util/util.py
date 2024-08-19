@@ -115,7 +115,7 @@ def roman2int(roman: str) -> Optional[int]:
     return number
 
 
-def isromandate(text: str, sep: str = '.,') -> bool:
+def isromandate(text: str, sep: str = r".,") -> bool:
     """Return true if text has the date format using month in roman numerals (as used by Bøggild et al).
        That is, assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year.
        Allows for common OCR mistake, meaning that if month contains '1' it will be interpreted as 'I'.
@@ -167,7 +167,7 @@ def isromandate(text: str, sep: str = '.,') -> bool:
 
 
 
-def parseromandate(text: str, sep: str = '.,') -> str:
+def parseromandate(text: str, sep: str = r".,") -> str:
     """Parse a date in the format accepted by isromandate() and return a numerical date in DD-MM-YYYY format.
 
        :param text: String to parse
@@ -183,7 +183,7 @@ def parseromandate(text: str, sep: str = '.,') -> str:
     else:
         cleantext = res.string[res.start():res.end()]
 
-    if not isromandate(text):
+    if not isromandate(text, sep):
         logging.warning("parseromandate expects a date string as input!")
         return ""
 
