@@ -29,7 +29,7 @@ SPECIES.1: /[a-z]+/
 subspecies: SUBSPECIES -> subspecies
 SUBSPECIES.1: /(sp|var)\.(\w|[ \.,()])*/
 author: AUTHOR -> author
-AUTHOR.1: /\(?\w+[,\.]?\)?([ ]?\w+)?/
+AUTHOR.1: /\(?[ ]?\w+[,\.]?\)?([ ]?\w+[,\.]?)*/
 catnumber: CATNUMBER -> catnumber
 CATNUMBER: /\w*\d+(\w|\))*([ .,]{0,2}\d+)?([-—~]+\d+)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
