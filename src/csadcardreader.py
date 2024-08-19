@@ -21,7 +21,6 @@ limitations under the License.
 
 import argparse
 from skimage.io import imread, imsave
-import matplotlib.pyplot as plt
 import pandas as pd
 import re
 from pathlib import Path
@@ -38,7 +37,7 @@ import datetime
 from labelreader.ocr import tesseract
 from labelreader.util.util import checkfilepath
 from labelreader.taxonchecker import gbiftaxonchecker
-from labelreader.util.util import isromandate, parseromandate, isdettext, islegtext, islegdettext, iscolltext
+from labelreader.util.util import parseromandate
 
 
 def empty_dataframe():
@@ -207,11 +206,9 @@ class CSADVisitor(lark.Visitor):
         else:
             self.data["date"] = date
 
-        print("Date: " + date)
         # Remove OCR errors
         date = re.sub(r"[ \.,…\-/]+", "-", date)
-        print("Cleaned date: " + date)
-        
+
         parsed_date  = parseromandate(date, sep=r"-")
         if "parsed_date" in self.data:
             self.data["parsed_date"] += ";" + parsed_date
