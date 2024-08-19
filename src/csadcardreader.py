@@ -314,7 +314,7 @@ class CSADVisitor(lark.Visitor):
 
 
 
-def larkparsetext(ocrtext: str, family: str, checker: str) -> pd.DataFrame:
+def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.DataFrame:
     """Parses the OCR text from a paper card into appropriate data fields using the Lark parser generator
         and a context-free grammar.
 
@@ -360,7 +360,8 @@ def larkparsetext(ocrtext: str, family: str, checker: str) -> pd.DataFrame:
     # Process the parse tree
     visitor  = CSADVisitor()
     visitor.visit(ptree)
-    print(visitor.data)
+    if args["verbose"]:
+        print(visitor.data)
 
     # Extract the data from the visitor
     # TODO: Check if the data is present before assigning it to the variables
@@ -435,7 +436,7 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
             print(ocrtext[i])
 
     family = Path(imgfilename).stem # Assume that the family name is the filename
-    df = larkparsetext(ocrtext, family, checker)
+    df = larkparsetext(ocrtext, family, checker, args)
 
     #  In case of no Alt Cat Number just pick a unique random file name
     if df["Alt Cat Number"][0] == "":
