@@ -1,6 +1,6 @@
 card: blank* top_line blank* (nodot NEWLINE)? blank* (taxon_lines)? blank* line* -> card
 top_line: family? "|"? "-"? catcode? catnumber? (LETTER* "—"? NEWLINE | NEWLINE) -> top_line
-taxon_lines: "—"? family? genus? ":"? (species? subspecies? author? ["," | "."] NEWLINE | NEWLINE taxon_lines) -> taxon_lines
+taxon_lines: "—"? family? genus? ":"? (species? ":"? subspecies? author? ["," | "."] NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
 mixed: (nodot ["," | "."] | leg ["," | "."] | det ["," | "."] | legdet ["," | "."] | locality ["," | "."] | other ["," | "."] |date_string ["," | "."])+ -> mixed
