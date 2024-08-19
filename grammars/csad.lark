@@ -1,6 +1,6 @@
 card: blank* top_line blank* (nodot NEWLINE)? blank* (taxon_lines)? blank* line* -> card
-top_line: family? "|"?  catcode? catnumber? (LETTER* NEWLINE | NEWLINE) -> top_line
-taxon_lines: "—"? family? genus? (species? subspecies? author? ["," | "."] NEWLINE | NEWLINE taxon_lines) -> taxon_lines
+top_line: family? "|"? "-"? catcode? catnumber? (LETTER* "—"? NEWLINE | NEWLINE) -> top_line
+taxon_lines: "—"? family? genus? ":"? (species? subspecies? author? ["," | "."] NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
 mixed: (nodot ["," | "."] | leg ["," | "."] | det ["," | "."] | legdet ["," | "."] | locality ["," | "."] | other ["," | "."] |date_string ["," | "."])+ -> mixed
@@ -21,7 +21,7 @@ dmydate: DMYDATE -> dmydate
 nodot: NODOT -> nodot
 NODOT.2: /(No(\.|,)[ ]?\d{3,5}|\d{3}[.,])/
 family: FAMILY -> family
-FAMILY.1: /(?i)(\w)+(ae)/
+FAMILY.1: /[A-Z](\w)*(ae|AE)/ //  /(?i)(\w)+(ae)/
 genus: GENUS -> genus
 GENUS.1: /[A-Z]/(LETTER|"-"| " = " | " - ")+      // Allow for special characters to handle OCR errors
 species: SPECIES -> species
