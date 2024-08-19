@@ -21,7 +21,7 @@ dmydate: DMYDATE -> dmydate
 nodot: NODOT -> nodot
 NODOT.2: /(No(\.|,)[ ]?\d{3,5}|\d{3}[.,])/
 family: FAMILY -> family
-FAMILY.1: /[A-Z](\w)*(ae|AE)/ //  /(?i)(\w)+(ae)/
+FAMILY.1: /[A-Z](\w)*(ae|AE)/
 genus: GENUS -> genus
 GENUS.1: /[A-Z]/(LETTER|"-"| " = " | " - ")+      // Allow for special characters to handle OCR errors
 species: SPECIES -> species
@@ -29,7 +29,7 @@ SPECIES.1: /[a-z]+/
 subspecies: SUBSPECIES -> subspecies
 SUBSPECIES.1: /(sp|var)\.(\w|[ \.,()])*/
 author: AUTHOR -> author
-AUTHOR.1: /\(?[ ]?\w+[,\.]?\)?([ ]?\w+[,\.]?)*/
+AUTHOR.1: /\(?[ ]?(\w+[,\.]?)+\)?([ ]?\w+[,\.]?)*/
 catnumber: CATNUMBER -> catnumber
 CATNUMBER: /\w*\d+(\w|\))*([ .,]{0,2}\d+)?([-—~]+\d+)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
