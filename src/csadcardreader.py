@@ -211,7 +211,7 @@ class CSADVisitor(lark.Visitor):
         # Remove OCR errors
         date = re.sub(r"[ \.,…\-/]+", "-", date)
         print("Cleaned date: " + date)
-        # TODO: Fix parseromandate to handle month-year format
+        
         parsed_date  = parseromandate(date, sep=r"-")
         if "parsed_date" in self.data:
             self.data["parsed_date"] += ";" + parsed_date
@@ -265,14 +265,11 @@ class CSADVisitor(lark.Visitor):
     def monthnamedate(self, tree):
         date = ""
         day = ""
-        month = ""
-        year = ""
         if len(tree.children) == 3:
             day = str(tree.children[0])
-        if len(tree.children) >= 2:
-            month = str(tree.children[-2])
-        if len(tree.children) >= 1:
-            year = str(tree.children[-1])
+
+        month = str(tree.children[-2])
+        year = str(tree.children[-1])
 
         if len(day) != 0:
             date += day + " "

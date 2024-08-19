@@ -129,41 +129,48 @@ def isromandate(text: str, sep: str = r".,") -> bool:
     """
     # Assume format is one or two digits for Day, Roman numeral for Month and 4 digits for Year
     # Include a common OCR mistake of reading I as 1 as acceptable.
-    if re.match(r"^\d{1,2}[" + sep + r"][IVX1]{1,4}[" + sep +r"]\d{4}", text):
+
+    cleantext = ""
+    res = re.search(r"^(\d{1,2}[" + sep + r"]{1})?[IVX1]{1,4}[" + sep + r"]{1}\d{4}", text)
+    if not res:
+        return False
+    else:
+        cleantext = res.string[res.start():res.end()]
+
         # Split into Day, Month, Year parts
-        parts = re.split(r"[" + sep + r"]", text)
-        if len(parts) >= 3:
+        parts = re.split(r"[" + sep + r"]", cleantext)
+        retval = False
+        if len(parts) == 3:
             # Parse day
             try:
                 day = int(parts[0])
             except ValueError:
                 return False # Parsing integer day failed
 
-            # Parse month
-            month = roman2int(parts[1])
-            if month == None:
-                return False
-
-            # Parse year
-            try:
-                year = int(parts[2])
-            except ValueError:
-                return False # Parsing integer year failed
-
             # Check day
             retval = (day >= 1 and day <= 31)
+        else:
+            retval = True
+
+        if len(parts) >= 2:
+            # Parse month
+            month = roman2int(parts[-2])
+            if month == None:
+                return False
 
             # Check month
             retval = retval and (month >= 1 and month <= 12)
 
-            # Check year
-            retval = retval and (year >= 0)
+            # Parse year
+            try:
+                year = int(parts[-1])
+            except ValueError:
+                return False # Parsing integer year failed
 
-            return retval
-        else:
-            return False
-    else:
-        return False
+            # Check year
+            retval = retval and (year >= 1)
+
+        return retval
 
 
 
@@ -176,7 +183,7 @@ def parseromandate(text: str, sep: str = r".,") -> str:
        :rtype: str
     """
     # Remove prefix and suffix characters
-    res = re.search(r"^\d{1,2}[" + sep + r"]{1}[IVX1]{1,4}[" + sep + r"]{1}\d{4}", text)
+    res = re.search(r"^(\d{1,2}[" + sep + r"]{1})?[IVX1]{1,4}[" + sep + r"]{1}\d{4}", text)
     if not res:
         logging.warning("parseromandate expects a date string as input!")
         return ""
@@ -191,11 +198,15 @@ def parseromandate(text: str, sep: str = r".,") -> str:
     parts = re.split(r"[" + sep + r"]{1}", cleantext)
     if len(parts) == 3:
         day = parts[0]
-        month = roman2int(parts[1])
+    else:
+        day = 0
+
+    if len(parts) >= 2:
+        month = roman2int(parts[-2])
         if month == None:
             logging.warning("parseromandate expects a date string as input: Month is unknown = " + parts[1])
             return ""
-        year = parts[2]
+        year = parts[-1]
     else:
         logging.warning("parseromandate expects a date string as input: Missing either day, month or year.")
         return ""
