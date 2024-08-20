@@ -41,7 +41,7 @@ PERSON.1: /[ÆØÅA-Z](\.)[ ]*(\w(\.)[ ]*)*|\w+([,\.]?[ ]*\w+[ \.]?)*/
 locality: LOCALITY -> locality
 LOCALITY.0: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæøå]*)?/
 other: OTHER -> other
-OTHER.0: /(\")?[ ]*\w+([ ,\.:\/\-]|\w)*(\")?/
+OTHER.0: /(\"|\()?[ ]*\w+([ ,\.:\/\-\(\)!]|\w)*(\"|\})?/
 
 DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
 DMYDATE.2: /\d{1,2}[ \.,\/-]\d{1,2}[ \.,\/-]\d{2,4}/
