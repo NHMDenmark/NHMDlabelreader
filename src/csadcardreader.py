@@ -335,6 +335,8 @@ def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.Dat
     species = ""
     subspecies = ""
     author_name = ""
+    ocr_taxonname = " "
+    checked_gbif_taxonname = " "
     determiner = ""
     collector = ""
     col_number = ""
@@ -342,6 +344,7 @@ def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.Dat
     datetext = ""
     parseddate = ""
     daterange = ""
+
 
 
     # Read the grammar and create the parser
