@@ -1,6 +1,6 @@
 card: blank* top_line blank* (nodot NEWLINE)? blank* (taxon_lines)? blank* line* -> card
-top_line: family? "-"? "—"? LETTER*  catcode? catnumber? (LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
-taxon_lines: "—"? family? genus? ":"? (species? ":"? subspecies? author? ("," | "." | ";")* NEWLINE | NEWLINE taxon_lines) -> taxon_lines
+top_line: "("? family? ")"? "-"? "—"? LETTER*  catcode? catnumber? (LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
+taxon_lines: "—"? family? genus? ":"? "]"? "—"? (species? ":"? subspecies? author? ("," | "." | ";")* NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
 mixed: (nodot ["," | "." | "—"] | leg ["," | "."] | det ["," | "."] | legdet ["," | "."] | locality ["," | "."] | other ["," | "."] |date_string ["," | "."])+ -> mixed
@@ -31,7 +31,7 @@ SUBSPECIES.1: /(sp|var)\.(\w|[ \.,()])*/
 author: AUTHOR -> author
 AUTHOR.1: /\(?[ ]?(\w+[,\.]?)+\)?([ ]?\w+[,\.]?)*/
 catnumber: CATNUMBER -> catnumber
-CATNUMBER: /(\+)?\w*\d+(\w|\))*([ .,]{0,2}\d+)?([-—~]+\d+)?/            // Handle common OCR errors
+CATNUMBER: /(\+)?\w*\d+(\w|\))*([ .,]{0,3}\d+)?([-—~]+\d+)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
 CATCODE: /(Pt[\.]?(\s)?(\+|&)(\s)?G[\.]?(\s)*[-]?)|(G[\.]?[:]?(\s|-|…)+(tør(saml)?)?[\.]?)/
 LEG.2: /(L|l)eg(it|[,\.])?[:]?[ ]*/
@@ -41,7 +41,7 @@ PERSON.1: /[ÆØÅA-Z](\.)[ ]*(\w(\.)[ ]*)*|\w+([,\.]?[ ]*\w+[ \.]?)*/
 locality: LOCALITY -> locality
 LOCALITY.0: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæøå]*)?/
 other: OTHER -> other
-OTHER.0: /(\"|\(|\+)?[ ]*\w+([ ,\.:\/\-\(\)!\&]|\w)*(\"|\})?/
+OTHER.0: /(\"|\(|\+)?[ ]*\w+([ ,\.:\/\-\(\)!\&\?]|\w)*(\"|\})?/
 
 DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
 DMYDATE.2: /\d{1,2}[ \.,\/-]\d{1,2}[ \.,\/-]\d{2,4}/
@@ -52,7 +52,7 @@ DKMONTH.2: /((?i)januar|jan(\.)?|februar|feb(\.)?|marts|mar(\.)?|april|maj|juni|
 ENMONTH.2: /((?i)january|jan(\.)?|february|feb(\.)?|march|mar(\.)?|april|may|june|july|august|aug(\.)?|september|sept(\.)?|october|oct(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
 ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?[IVX]{1,4}[\/]?[\.,\-\/]{1}[ ]?\d{4}/
 
-GARBAGE: /[…\|]/
+GARBAGE: /[…\|\';®<>]/
 
 %import common.WS_INLINE
 %import common.NEWLINE

@@ -253,11 +253,17 @@ class CSADVisitor(lark.Visitor):
             day = "00"
             month = "00"
             year = "0000"
-        parsed_date = "%02d" % int(day) + "-" + "%02d" % int(month) + "-" + "%04d" % int(year)
+
+        try:
+            parsed_date = "%02d" % int(day) + "-" + "%02d" % int(month) + "-" + "%04d" % int(year)
+        except ValueError:
+            parsed_date = ""
+
         if "parsed_date" in self.data:
             self.data["parsed_date"] += ";" + parsed_date
         else:
             self.data["parsed_date"] = parsed_date
+
 
     def monthnamedate(self, tree):
         date = ""
@@ -300,12 +306,16 @@ class CSADVisitor(lark.Visitor):
         else:
             month_num = "00"
 
-        parsed_date = ""
-        if len(day) != 0:
-            parsed_date += "%02d" % int(day) + "-"
-        else:
-            parsed_date += "00-"
-        parsed_date += month_num + "-" + "%04d" % int(year)
+        try:
+            parsed_date = ""
+            if len(day) != 0:
+                parsed_date += "%02d" % int(day) + "-"
+            else:
+                parsed_date += "00-"
+            parsed_date += month_num + "-" + "%04d" % int(year)
+        except ValueError:
+            parsed_date = ""
+
         if "parsed_date" in self.data:
             self.data["parsed_date"] += ";" + parsed_date
         else:
@@ -532,8 +542,8 @@ def main():
             img = imread(imgfilename)
             master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
 
-    # Write Excel sheet to disk
-    master_table.to_excel(outfilepath.as_posix(), index=False)
+        # Write Excel sheet to disk
+        master_table.to_excel(outfilepath.as_posix(), index=False)
 
 
 if __name__ == '__main__':
