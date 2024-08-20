@@ -404,7 +404,8 @@ def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.Dat
         ocr_taxonname = " ".join([genus, species, author_name])
         checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
     except lark.UnexpectedInput as e:
-        print("Error in parsing: " + e.get_context(text))
+        print("Error in parsing:")
+        print(e.get_context(text))
 
     record = pd.DataFrame({
         "Alt Cat Number": [alt_cat_number],
