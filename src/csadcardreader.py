@@ -354,52 +354,54 @@ def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.Dat
     for idx in range(0, len(ocrtext)):
         text += " ".join(ocrtext[idx]) + "\n"
 
-    # Create the parse tree
-    ptree = parser.parse(text)
+    try:
+        # Create the parse tree
+        ptree = parser.parse(text)
 
-    # Process the parse tree
-    visitor  = CSADVisitor()
-    visitor.visit(ptree)
-    if args["verbose"]:
-        print(visitor.data)
+        # Process the parse tree
+        visitor  = CSADVisitor()
+        visitor.visit(ptree)
+        if args["verbose"]:
+            print(visitor.data)
 
-    # Extract the data from the visitor
-    # TODO: Check if the data is present before assigning it to the variables
-    if "catcode" in visitor.data:
-        alt_cat_number += visitor.data["catcode"]
-    if "catnumber" in visitor.data:
-        alt_cat_number += visitor.data["catnumber"]
-    if "family" in visitor.data:
-        family = visitor.data["family"].lower().capitalize()
-    if "genus" in visitor.data:
-        genus = visitor.data["genus"].lower().capitalize()
-    if "species" in visitor.data:
-        species = visitor.data["species"].lower()
-    if "subspecies" in visitor.data:
-        subspecies = visitor.data["subspecies"]
-    if "author" in visitor.data:
-        author_name = visitor.data["author"]
-    if "leg" in visitor.data:
-        collector = visitor.data["leg"]
-    if "det" in visitor.data:
-        determiner = visitor.data["det"]
-    if "nodot" in visitor.data:
-        col_number = visitor.data["nodot"]
-    if "locality" in visitor.data:
-        locality = visitor.data["locality"]
-    if "other" in visitor.data:
-        other = visitor.data["other"]
-    if "date" in visitor.data:
-        datetext = visitor.data["date"]
-    if "parsed_date" in visitor.data:
-        parseddate = visitor.data["parsed_date"]
-    if "daterange" in visitor.data:
-        daterange = visitor.data["daterange"]
+        # Extract the data from the visitor
+        # TODO: Check if the data is present before assigning it to the variables
+        if "catcode" in visitor.data:
+            alt_cat_number += visitor.data["catcode"]
+        if "catnumber" in visitor.data:
+            alt_cat_number += visitor.data["catnumber"]
+        if "family" in visitor.data:
+            family = visitor.data["family"].lower().capitalize()
+        if "genus" in visitor.data:
+            genus = visitor.data["genus"].lower().capitalize()
+        if "species" in visitor.data:
+            species = visitor.data["species"].lower()
+        if "subspecies" in visitor.data:
+            subspecies = visitor.data["subspecies"]
+        if "author" in visitor.data:
+            author_name = visitor.data["author"]
+        if "leg" in visitor.data:
+            collector = visitor.data["leg"]
+        if "det" in visitor.data:
+            determiner = visitor.data["det"]
+        if "nodot" in visitor.data:
+            col_number = visitor.data["nodot"]
+        if "locality" in visitor.data:
+            locality = visitor.data["locality"]
+        if "other" in visitor.data:
+            other = visitor.data["other"]
+        if "date" in visitor.data:
+            datetext = visitor.data["date"]
+        if "parsed_date" in visitor.data:
+            parseddate = visitor.data["parsed_date"]
+        if "daterange" in visitor.data:
+            daterange = visitor.data["daterange"]
 
-    # check taxonomic full name
-    ocr_taxonname = " ".join([genus, species, author_name])
-    checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
-
+        # check taxonomic full name
+        ocr_taxonname = " ".join([genus, species, author_name])
+        checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
+    except lark.UnexpectedInput as e:
+        print("Error in parsing: " + e.get_context(text))
 
     record = pd.DataFrame({
         "Alt Cat Number": [alt_cat_number],
