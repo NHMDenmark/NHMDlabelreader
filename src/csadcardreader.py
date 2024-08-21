@@ -501,7 +501,7 @@ def main():
 
     # Initialize the OCR reader object
     ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 1 --psm 6')
-    #ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3 --psm 6')
+    #ocrreader = tesseract.OCR(args["tesseract"], args["language"], config='--oem 3')
 
     # Initialize taxon checker
     checker = gbiftaxonchecker.GBIFTaxonChecker()
