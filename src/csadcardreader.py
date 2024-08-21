@@ -544,6 +544,7 @@ def main():
 
         # Write Excel sheet to disk
         master_table.to_excel(outfilepath.as_posix(), index=False)
+        master_table = empty_dataframe()
 
 
 if __name__ == '__main__':
