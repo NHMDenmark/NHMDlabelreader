@@ -1,5 +1,5 @@
 card: blank* top_line blank* (nodot NEWLINE)? blank* (taxon_lines)? blank* line* -> card
-top_line: ((" "|UNICODE_LETTER|"-"|"\""|"~"|"."|";"|"("|")")* NEWLINE)? family* "-"? "—"? (" "|UNICODE_LETTER|"-"|"”"|"/"|":"|"—")*  catcode? catnumber? (UNICODE_LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
+top_line: ((" "|UNICODE_LETTER|"-"|"\""|"~"|"."|";"|"("|")")* NEWLINE)? family* "-"? "—"? (" "|UNICODE_LETTER|"-"|"”"|"/"|":"|"—"|"+"|"."|"&")*  catcode? catnumber? (UNICODE_LETTER* "—"? ")"? "?"? "."? ","? NEWLINE | NEWLINE) -> top_line
 taxon_lines: "—"? family? genus? ":"? "]"? "—"? ","? (species?  (":" | "," | "." | ";")* subspecies? author? ("," | "." | ";" | "—")* NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
@@ -33,7 +33,7 @@ AUTHOR.1: /\(?[ ]?([A-Za-zÆØÅæøå]+[,\.]?)+\)?([ ]?[A-Za-zÆØÅæøå]+[,\
 catnumber: CATNUMBER -> catnumber
 CATNUMBER: /(\+)?\w*\d+[lo]*(\w|\))*([ .,:]{0,3}\d+[lo]*)?([-—~]+\d+[lo]*)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
-CATCODE: /(Pt[\.]?(\s)?(\+|&)(\s)?G[\.]?(\s)*[-]?)|(G[\.]?[:]?(\s|-|…)+(tør(saml)?)?[\.]?)/
+CATCODE: /(Pt[\.]?(\s)?(\+|&)(\s)?G[\.]?(\s)*[-]?)|(G[\.]?[:]?(\s|-|…)*(tør(saml)?)?[\.]?)/
 LEG.2: /((L|l)eg(it|[,\.])?[:]?[ ]*)|((C|c)oll[,\.]?[:]?[ ]*)/
 DET.3: /(D|d)et[,\.]?[:]?[ ]*/
 LEGDET.3: /(L|l)eg[,\.]? (et|&) det[,\.]?[:]?[ ]*/
@@ -54,7 +54,7 @@ ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?([IVX]{1,4}|I1)[\/]?[\.,\-\/]{1}[ ]?\d{4}
 
 UNICODE_LETTER: (LETTER | "Æ" | "Ø" | "Å" | "æ" | "ø" | "å" | "É")
 
-GARBAGE: /[…\|\';®©<>€]/
+GARBAGE: /[…\|\';®©<>€§]/
 
 %import common.WS_INLINE
 %import common.NEWLINE
