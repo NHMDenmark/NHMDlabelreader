@@ -1,5 +1,5 @@
 card: blank* top_line blank* (nodot NEWLINE)? blank* (taxon_lines)? blank* line* -> card
-top_line: ((" "|UNICODE_LETTER|"-"|"\""|"~"|"."|";"|"("|")")* NEWLINE)? family* "-"? "—"? (" "|UNICODE_LETTER|"-"|"”"|"/")*  catcode? catnumber? (UNICODE_LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
+top_line: ((" "|UNICODE_LETTER|"-"|"\""|"~"|"."|";"|"("|")")* NEWLINE)? family* "-"? "—"? (" "|UNICODE_LETTER|"-"|"”"|"/"|":"|"—")*  catcode? catnumber? (UNICODE_LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
 taxon_lines: "—"? family? genus? ":"? "]"? "—"? ","? (species?  (":" | "," | "." | ";")* subspecies? author? ("," | "." | ";" | "—")* NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
@@ -54,7 +54,7 @@ ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?([IVX]{1,4}|I1)[\/]?[\.,\-\/]{1}[ ]?\d{4}
 
 UNICODE_LETTER: (LETTER | "Æ" | "Ø" | "Å" | "æ" | "ø" | "å" | "É")
 
-GARBAGE: /[…\|\';®<>€]/
+GARBAGE: /[…\|\';®©<>€]/
 
 %import common.WS_INLINE
 %import common.NEWLINE
