@@ -13,6 +13,7 @@ tesseract-dan
 tesseract-eng
 tesseract-deu
 tesseract-lat
+imagemagick
 ```
 
 Create a virtual environment

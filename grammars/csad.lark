@@ -19,7 +19,7 @@ dmydate: DMYDATE -> dmydate
 
 
 nodot: NODOT -> nodot
-NODOT.2: /((N|n)o(\.|,)[ ]?\d{3,5}|\d{3}[.,])/
+NODOT.2: /((N|n)o(\.|,)[ ]?\d{2,5}|\d{3}[.,])/
 family: FAMILY -> family
 FAMILY.1: /[\(]?[A-Z](\w)*(ae|AE)[\)]?/
 genus: GENUS -> genus
@@ -43,7 +43,7 @@ LOCALITY.0: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæ
 other: OTHER -> other
 OTHER.0: /([\-\& \.]+|(\"|\(|\+)?[ ]*\w+([ ,\.:\/\-\(\)!\&\?]|\w)*(\"|\}|\%)?)/
 
-DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
+DATE_TEXT.3: /(Date|date|Dato|dato)[.][:]?/
 DMYDATE.2: /\d{1,2}[ \.,\/-]\d{1,2}[ \.,\/-]\d{2,4}/
 DATERANGE.2: /\d{1,2}(\-)\d{1,2}[ \.,\/]\d{1,2}[ \.,\/-]\d{2,4}/
 YEARRANGE.2: /\d{2,4}[-\/]\d{2}/
