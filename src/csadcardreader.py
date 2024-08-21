@@ -359,7 +359,10 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
     # Create a text string from the list of lists from the OCR
     text = ""
     for idx in range(0, len(ocrtext)):
-        text += " ".join(ocrtext[idx]) + "\n"
+        for elem in ocrtext[idx]:
+            if isinstance(elem, str): # Otherwise skip it
+                text += elem + " "
+        text += "\n"
 
     try:
         # Create the parse tree
