@@ -98,7 +98,7 @@ def clean_catalogue_number(text: str) -> str:
         text: String to clean
         Return: A cleaned string
     """
-    cleantext = re.sub(r"[ .,]{1,2}", '.', text)
+    cleantext = re.sub(r"[ .,:]{1,2}", '.', text)
     cleantext = re.sub(r"[-—~]+", '-', cleantext)
     cleantext = re.sub(r"l", '1', cleantext)
     cleantext = re.sub(r"o", '0', cleantext)

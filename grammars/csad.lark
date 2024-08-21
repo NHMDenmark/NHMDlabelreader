@@ -31,7 +31,7 @@ SUBSPECIES.1: /(sp|var)\.(\w|[ \.,()])*/
 author: AUTHOR -> author
 AUTHOR.1: /\(?[ ]?([A-Za-zÆØÅæøå]+[,\.]?)+\)?([ ]?[A-Za-zÆØÅæøå]+[,\.]?)*/
 catnumber: CATNUMBER -> catnumber
-CATNUMBER: /(\+)?\w*\d+[lo]*(\w|\))*([ .,]{0,3}\d+[lo]*)?([-—~]+\d+[lo]*)?/            // Handle common OCR errors
+CATNUMBER: /(\+)?\w*\d+[lo]*(\w|\))*([ .,:]{0,3}\d+[lo]*)?([-—~]+\d+[lo]*)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
 CATCODE: /(Pt[\.]?(\s)?(\+|&)(\s)?G[\.]?(\s)*[-]?)|(G[\.]?[:]?(\s|-|…)+(tør(saml)?)?[\.]?)/
 LEG.2: /((L|l)eg(it|[,\.])?[:]?[ ]*)|((C|c)oll[,\.]?[:]?[ ]*)/
