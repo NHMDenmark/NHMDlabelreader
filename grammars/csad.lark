@@ -1,6 +1,6 @@
 card: blank* top_line blank* (nodot NEWLINE)? blank* (taxon_lines)? blank* line* -> card
-top_line: "("? family? ")"? "-"? "—"? LETTER*  catcode? catnumber? (LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
-taxon_lines: "—"? family? genus? ":"? "]"? "—"? (species? ":"? subspecies? author? ("," | "." | ";")* NEWLINE | NEWLINE taxon_lines) -> taxon_lines
+top_line: ((" "|UNICODE_LETTER|"-"|"\""|"~"|"."|";"|"("|")")* NEWLINE)? family* "-"? "—"? (" "|UNICODE_LETTER|"-"|"”"|"/")*  catcode? catnumber? (UNICODE_LETTER* "—"? ")"? "?"? NEWLINE | NEWLINE) -> top_line
+taxon_lines: "—"? family? genus? ":"? "]"? "—"? ","? (species?  (":" | "," | "." | ";")* subspecies? author? ("," | "." | ";" | "—")* NEWLINE | NEWLINE taxon_lines) -> taxon_lines
 line: (nodot | leg | det | legdet | date_string | locality | other | mixed | blank ("." | ",")?) NEWLINE -> line
 blank: NEWLINE
 mixed: (nodot ["," | "." | "—"] | leg ["," | "."] | det ["," | "."] | legdet ["," | "."] | locality ["," | "."] | other ["," | "."] |date_string ["," | "."])+ -> mixed
@@ -19,9 +19,9 @@ dmydate: DMYDATE -> dmydate
 
 
 nodot: NODOT -> nodot
-NODOT.2: /(No(\.|,)[ ]?\d{3,5}|\d{3}[.,])/
+NODOT.2: /((N|n)o(\.|,)[ ]?\d{3,5}|\d{3}[.,])/
 family: FAMILY -> family
-FAMILY.1: /[A-Z](\w)*(ae|AE)/
+FAMILY.1: /[\(]?[A-Z](\w)*(ae|AE)[\)]?/
 genus: GENUS -> genus
 GENUS.1: /[A-Z]/(LETTER|"-"| " = " | " - ")+      // Allow for special characters to handle OCR errors
 species: SPECIES -> species
@@ -29,30 +29,32 @@ SPECIES.1: /[a-z]+/
 subspecies: SUBSPECIES -> subspecies
 SUBSPECIES.1: /(sp|var)\.(\w|[ \.,()])*/
 author: AUTHOR -> author
-AUTHOR.1: /\(?[ ]?(\w+[,\.]?)+\)?([ ]?\w+[,\.]?)*/
+AUTHOR.1: /\(?[ ]?([A-Za-zÆØÅæøå]+[,\.]?)+\)?([ ]?[A-Za-zÆØÅæøå]+[,\.]?)*/
 catnumber: CATNUMBER -> catnumber
-CATNUMBER: /(\+)?\w*\d+(\w|\))*([ .,]{0,3}\d+)?([-—~]+\d+)?/            // Handle common OCR errors
+CATNUMBER: /(\+)?\w*\d+[lo]*(\w|\))*([ .,]{0,3}\d+[lo]*)?([-—~]+\d+[lo]*)?/            // Handle common OCR errors
 catcode: CATCODE -> catcode
 CATCODE: /(Pt[\.]?(\s)?(\+|&)(\s)?G[\.]?(\s)*[-]?)|(G[\.]?[:]?(\s|-|…)+(tør(saml)?)?[\.]?)/
-LEG.2: /(L|l)eg(it|[,\.])?[:]?[ ]*/
+LEG.2: /((L|l)eg(it|[,\.])?[:]?[ ]*)|((C|c)oll[,\.]?[:]?[ ]*)/
 DET.3: /(D|d)et[,\.]?[:]?[ ]*/
 LEGDET.3: /(L|l)eg[,\.]? (et|&) det[,\.]?[:]?[ ]*/
-PERSON.1: /[ÆØÅA-Z](\.)[ ]*(\w(\.)[ ]*)*|\w+([,\.]?[ ]*\w+[ \.]?)*/
+PERSON.1: /[ÆØÅA-Z](\.)([ ]*\w(\.))+|[A-Za-zÆØÅæøå]+([,\.\-]?[ ]*[A-Za-zÆØÅæøå]+[ \.]?)*/
 locality: LOCALITY -> locality
 LOCALITY.0: /[A-Za-zÆØÅæøå][A-Za-zÆØÅæøå]+((,|\.)[ ]*[A-Za-zÆØÅæøå]*)?/
 other: OTHER -> other
-OTHER.0: /(\"|\(|\+)?[ ]*\w+([ ,\.:\/\-\(\)!\&\?]|\w)*(\"|\})?/
+OTHER.0: /([\-\& \.]+|(\"|\(|\+)?[ ]*\w+([ ,\.:\/\-\(\)!\&\?]|\w)*(\"|\}|\%)?)/
 
 DATE_TEXT.3: /(Date|date|Dato|dato)[:]?/
 DMYDATE.2: /\d{1,2}[ \.,\/-]\d{1,2}[ \.,\/-]\d{2,4}/
 DATERANGE.2: /\d{1,2}(\-)\d{1,2}[ \.,\/]\d{1,2}[ \.,\/-]\d{2,4}/
 YEARRANGE.2: /\d{2,4}[-\/]\d{2}/
 YEAR.2: /\d{4}/
-DKMONTH.2: /((?i)januar|jan(\.)?|februar|feb(\.)?|marts|mar(\.)?|april|maj|juni|juli|august|aug(\.)?|september|sept(\.)?|oktober|okt(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
+DKMONTH.2: /((?i)januar|jan(\.)?|februar|feb(\.)?|marts|mar(\.)?|april|maj|juni|juli|august|aug(\.)?|september|sept(\.)?|oktober|okt(\.)?|november|nov(\.)?|novbr(\.)?|december|dec(\.)?)[,]?/
 ENMONTH.2: /((?i)january|jan(\.)?|february|feb(\.)?|march|mar(\.)?|april|may|june|july|august|aug(\.)?|september|sept(\.)?|october|oct(\.)?|november|nov(\.)?|december|dec(\.)?)[,]?/
-ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?[IVX]{1,4}[\/]?[\.,\-\/]{1}[ ]?\d{4}/
+ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?([IVX]{1,4}|I1)[\/]?[\.,\-\/]{1}[ ]?\d{4}/
 
-GARBAGE: /[…\|\';®<>]/
+UNICODE_LETTER: (LETTER | "Æ" | "Ø" | "Å" | "æ" | "ø" | "å" | "É")
+
+GARBAGE: /[…\|\';®<>€]/
 
 %import common.WS_INLINE
 %import common.NEWLINE

@@ -296,7 +296,7 @@ class CSADVisitor(lark.Visitor):
                      "august": "08", "aug": "08",
                      "september": "09", "sep": "09",
                      "oktober": "10", "october": "10", "okt": "10", "oct": "10",
-                     "november": "11", "nov": "11",
+                     "november": "11", "nov": "11", "novbr": "11",
                      "december": "12", "dec": "12"
                      }
 
@@ -324,7 +324,7 @@ class CSADVisitor(lark.Visitor):
 
 
 
-def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.DataFrame:
+def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxonChecker, parser: lark.Lark, args: dict) -> pd.DataFrame:
     """Parses the OCR text from a paper card into appropriate data fields using the Lark parser generator
         and a context-free grammar.
 
@@ -355,12 +355,6 @@ def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.Dat
     parseddate = ""
     daterange = ""
 
-
-
-    # Read the grammar and create the parser
-    gf = open("../grammars/csad.lark", "r")
-    grammar = gf.read()
-    parser = lark.Lark(grammar, start='card')
 
     # Create a text string from the list of lists from the OCR
     text = ""
@@ -440,7 +434,7 @@ def larkparsetext(ocrtext: str, family: str, checker: str, args: dict) -> pd.Dat
     return record
 
 
-def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker):
+def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker, parser):
     """Parse one image and create a row in the master_table"""
 
     ocrreader.read_image(img)
@@ -452,7 +446,7 @@ def process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_ta
             print(ocrtext[i])
 
     family = Path(imgfilename).stem # Assume that the family name is the filename
-    df = larkparsetext(ocrtext, family, checker, args)
+    df = larkparsetext(ocrtext, family, checker, parser, args)
 
     #  In case of no Alt Cat Number just pick a unique random file name
     if df["Alt Cat Number"][0] == "":
@@ -506,6 +500,11 @@ def main():
     # Initialize taxon checker
     checker = gbiftaxonchecker.GBIFTaxonChecker()
 
+    # Read the grammar and create the parser
+    gf = open("../grammars/csad.lark", "r")
+    grammar = gf.read()
+    parser = lark.Lark(grammar, start='card')
+
     master_table = empty_dataframe()
 
     # Loop over a directory of images
@@ -531,16 +530,16 @@ def main():
                     img = np.array(img_wand)
                     no_pages += 1
                     print("Reading page " + str(no_pages))
-                    master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
+                    master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker, parser)
 
         elif Path(imgfilename).suffix == '.tif':
             # Read image file
             img = imread(imgfilename, plugin='pil')
-            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
+            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker, parser)
         else:
             # Read image file
             img = imread(imgfilename)
-            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker)
+            master_table = process_image(img, imgfilename, no_img, no_pages, args, ocrreader, master_table, checker, parser)
 
         # Write Excel sheet to disk
         master_table.to_excel(outfilepath.as_posix(), index=False)
