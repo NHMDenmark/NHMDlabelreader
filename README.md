@@ -7,12 +7,17 @@ The project includes Python scripts and ideas for automated reading of machine t
 
 ## Requirements
 The following must be installed on the system. On macOS, I install this via MacPorts.
+
+For OCR using tesseract:
 ```sh
 tesseract
 tesseract-dan
 tesseract-eng
 tesseract-deu
 tesseract-lat
+```
+For reading PDF files:
+```sh
 imagemagick
 ```
 
@@ -62,11 +67,11 @@ pip install dist/NHMDlabelreader-0.0.1-py3-none-any.whl
 
 For more instructions on how to configure setup.cfg, see the [setuptools quickstart](https://setuptools.pypa.io/en/latest/userguide/quickstart.html#).
 
-To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
+We are not currently publishing this package to PiPI. To upload to PyPI follow these [instructions](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 
 ### Github actions
 Currently there are two github actions workflow that both need to be
-activated interactively in the repository on github.com.
+activated manually in the repository on github.com.
 For more advanced workflows see Ole Engstrøms [IKPLS](https://github.com/Sm00thix/IKPLS/tree/main) repository 
 
 ## Documentation
@@ -78,7 +83,6 @@ This script parses archive cards from the Ole Bøggild collection of Danish spid
 ### butterflyatlasreader
 This script parses a table of taxa from the butterfly atlas book.
 
-### herbariumcardreader
-This script can parse taxonomic and locality information from herbarium 
-archive cards.
+### csadcardreader
+This script attempts to parse information on archive cards from the C-SAD Botany collection at NHMD.
 
