@@ -102,6 +102,8 @@ def clean_catalogue_number(text: str) -> str:
     cleantext = re.sub(r"[-—~]+", '-', cleantext)
     cleantext = re.sub(r"l", '1', cleantext)
     cleantext = re.sub(r"o", '0', cleantext)
+    cleantext = re.sub(r"/", '', cleantext)
+    cleantext = re.sub(r"\\", '', cleantext)
     return cleantext
 
 
