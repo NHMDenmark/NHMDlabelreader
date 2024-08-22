@@ -4,7 +4,7 @@ Created on Thu Aug 21 14:48:00 2022
 
 @author: Kim Steenstrup Pedersen, NHMD
 
-Copyright 2022 Natural History Museum of Denmark (NHMD)
+Copyright 2024 Natural History Museum of Denmark (NHMD)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,10 +29,6 @@ import numpy as np
 import lark
 import datetime
 
-# Adding path to ocr package - this can probably be done smarter
-# from pathlib import Path
-# print("Adding to syspath: " + str(Path(__file__).parent.parent))
-# sys.path.append(str(Path(__file__).parent.parent))
 
 from labelreader.ocr import tesseract
 from labelreader.util.util import checkfilepath
@@ -98,7 +94,8 @@ def clean_catalogue_number(text: str) -> str:
         text: String to clean
         Return: A cleaned string
     """
-    cleantext = re.sub(r"[ .,:]{1,2}", '.', text)
+    cleantext = re.sub(r" ", '', text)
+    cleantext = re.sub(r"[.,:]{1,2}", '.', cleantext)
     cleantext = re.sub(r"[-—~]+", '-', cleantext)
     cleantext = re.sub(r"l", '1', cleantext)
     cleantext = re.sub(r"o", '0', cleantext)
@@ -375,9 +372,9 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
         visitor.visit(ptree)
         if args["verbose"]:
             print(visitor.data)
+            #print(ptree.pretty())
 
         # Extract the data from the visitor
-        # TODO: Check if the data is present before assigning it to the variables
         if "catcode" in visitor.data:
             alt_cat_number += visitor.data["catcode"]
         if "catnumber" in visitor.data:
@@ -414,6 +411,7 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
         checked_gbif_taxonname = checker.check_full_name(" ".join([genus, species]))
     except lark.UnexpectedInput as e:
         print("Error in parsing:")
+        print("\"" + text + "\"\n")
         print(e.get_context(text))
 
     record = pd.DataFrame({
