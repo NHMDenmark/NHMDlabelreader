@@ -372,7 +372,7 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
         visitor.visit(ptree)
         if args["verbose"]:
             print(visitor.data)
-            #print(ptree.pretty())
+            print(ptree.pretty())
 
         # Extract the data from the visitor
         if "catcode" in visitor.data:

@@ -35,6 +35,7 @@ def main():
     text = f.read()
 
     # Create the parser
+    #parser = Lark(grammar, start='card', ambiguity='explicit')
     parser = Lark(grammar, start='card')
 
     # Parse tree
