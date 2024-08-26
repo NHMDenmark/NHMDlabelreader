@@ -54,7 +54,7 @@ ROMANDATE.2: /(\d{1,2}[\.,\-\/…]{1})?([IVX]{1,4}|I1)[\.,\-\/]{1,2}[ ]?\d{4}/
 
 UNICODE_LETTER: (LETTER | "Æ" | "Ø" | "Å" | "æ" | "ø" | "å" | "É")
 
-GARBAGE: /[…\|\';®©<>€£§_°”]/
+GARBAGE: /[…\|\';®©<>€£§_°”»]/
 
 %import common.WS_INLINE
 %import common.NEWLINE

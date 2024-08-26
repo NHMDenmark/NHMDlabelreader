@@ -413,6 +413,7 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
         print("Error in parsing:")
         print("\"" + text + "\"\n")
         print(e.get_context(text))
+        other = text # Save the misread text in the other field
 
     record = pd.DataFrame({
         "Alt Cat Number": [alt_cat_number],
