@@ -335,7 +335,26 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
 
     # If ocrtext is empty then stop here!
     if len(ocrtext) == 0:
-        return empty_dataframe()
+        record = pd.DataFrame({
+            "Alt Cat Number": [""],
+            "Other Remarks": [""],
+            "Family": [family],
+            "Genus": [""],
+            "Species": [""],
+            "Subspecies": [""],
+            "Author name": [""],
+            "Scientific name": [""],
+            "GBIF checked scientific name": [""],
+            "Determiner": [""],
+            "Collector": [""],
+            "Number": [""],
+            "Locality": [""],
+            "Date": [""],
+            "Parsed date DD-MM-YYYY": [""],
+            "Date range": [""],
+            "Attachment": [""]
+        })
+        return record
 
     # Initialize variables
     alt_cat_number = ""
@@ -344,8 +363,8 @@ def larkparsetext(ocrtext: str, family: str, checker: gbiftaxonchecker.GBIFTaxon
     species = ""
     subspecies = ""
     author_name = ""
-    ocr_taxonname = " "
-    checked_gbif_taxonname = " "
+    ocr_taxonname = ""
+    checked_gbif_taxonname = ""
     determiner = ""
     collector = ""
     col_number = ""
