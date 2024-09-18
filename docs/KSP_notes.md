@@ -11,3 +11,7 @@ https://toon-beerten.medium.com/ocr-comparison-tesseract-versus-easyocr-vs-paddl
 
 OCR comparison tool:
 https://huggingface.co/spaces/Loren/Streamlit_OCR_comparator?source=post_page-----a362d9c79e66--------------------------------
+
+
+Systems for label reading:
+[VoucherVision](https://github.com/Gene-Weaver/VoucherVision)
